@@ -44,6 +44,7 @@ export interface YtPlayerOptions {
   events?: {
     onReady?: (event: { target: YtPlayer }) => void
     onStateChange?: (event: { data: YtPlayerState; target: YtPlayer }) => void
+    onError?: (event: { data: number }) => void
   }
 }
 
@@ -51,7 +52,6 @@ interface YtPlayerConstructor {
   new (elementId: string | HTMLElement, options: YtPlayerOptions): YtPlayer
 }
 
-/** Alias for components that reference YT.PlayerState */
 export const YT = {
   get PlayerState() {
     return window.YT?.PlayerState ?? YtPlayerState
@@ -65,37 +65,50 @@ function isApiReady(): boolean {
   return typeof window.YT?.Player === 'function'
 }
 
-export function loadYouTubeApi(): Promise<void> {
+export function loadYouTubeApi(timeoutMs = 20_000): Promise<void> {
   if (isApiReady()) return Promise.resolve()
   if (apiPromise) return apiPromise
 
-  apiPromise = new Promise((resolve) => {
+  apiPromise = new Promise((resolve, reject) => {
     if (isApiReady()) {
       resolve()
       return
     }
 
+    let settled = false
+    const finish = (fn: () => void) => {
+      if (settled) return
+      settled = true
+      window.clearInterval(poll)
+      window.clearTimeout(timeout)
+      fn()
+    }
+
     const prev = window.onYouTubeIframeAPIReady
     window.onYouTubeIframeAPIReady = () => {
       prev?.()
-      resolve()
+      finish(resolve)
     }
 
     if (!document.querySelector('script[src*="iframe_api"]')) {
       const tag = document.createElement('script')
       tag.src = 'https://www.youtube.com/iframe_api'
+      tag.async = true
+      tag.onerror = () => finish(() => reject(new Error('YouTube script blocked')))
       document.head.appendChild(tag)
     }
 
-    // Fallback: callback may have fired before we registered it.
     const poll = window.setInterval(() => {
-      if (isApiReady()) {
-        window.clearInterval(poll)
-        resolve()
-      }
-    }, 50)
+      if (isApiReady()) finish(resolve)
+    }, 100)
 
-    window.setTimeout(() => window.clearInterval(poll), 15_000)
+    const timeout = window.setTimeout(() => {
+      finish(() => reject(new Error('YouTube API timed out')))
+    }, timeoutMs)
+  })
+
+  apiPromise.catch(() => {
+    apiPromise = null
   })
 
   return apiPromise

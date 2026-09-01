@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import type { Difficulty, MovieClip, RoundState, SessionStats } from '../types'
 import { Deck } from '../lib/deck'
 import { DIFFICULTY_LABELS } from '../lib/difficulty'
@@ -28,24 +28,26 @@ interface GameBoardProps {
   onExit: () => void
 }
 
+function startSession(deck: Deck): { movie: MovieClip | null; round: RoundState | null } {
+  const movie = deck.next()
+  return { movie, round: movie ? createRound(movie) : null }
+}
+
 export function GameBoard({ difficulty, onExit }: GameBoardProps) {
   const deck = useMemo(() => new Deck(difficulty), [difficulty])
   const best = useRef(loadBest(difficulty))
 
-  const [movie, setMovie] = useState<MovieClip | null>(() => deck.next())
-  const [round, setRound] = useState<RoundState | null>(null)
-  const [stats, setStats] = useState<SessionStats>(EMPTY_STATS)
+  const [session, setSession] = useState(() => startSession(deck))
+  const { movie, round } = session
 
+  const [stats, setStats] = useState<SessionStats>(EMPTY_STATS)
   const [activeLevel, setActiveLevel] = useState(0)
   const [playToken, setPlayToken] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [playerReady, setPlayerReady] = useState(false)
+  const [playerError, setPlayerError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [focusToken, setFocusToken] = useState(0)
-
-  useEffect(() => {
-    if (movie) setRound(createRound(movie))
-  }, [movie])
 
   const play = useCallback((level: number) => {
     setActiveLevel(level)
@@ -57,7 +59,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
 
     const correct = checkGuess(guess, movie)
     const next = applyGuess(round, guess, correct)
-    setRound(next)
+    setSession((s) => ({ ...s, round: next }))
 
     if (next.finished) {
       const updated = applyRoundToStats(stats, next)
@@ -75,14 +77,14 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
     if (!round || round.finished) return
     const next = unlockNextLevel(round)
     if (next === round) return
-    setRound(next)
+    setSession((s) => ({ ...s, round: next }))
     play(next.unlockedLevel)
   }
 
   function handleGiveUp() {
     if (!round || round.finished) return
     const next = giveUp(round)
-    setRound(next)
+    setSession((s) => ({ ...s, round: next }))
     const updated = applyRoundToStats(stats, next)
     setStats(updated)
     saveBest(difficulty, updated.score)
@@ -91,9 +93,11 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
   function handleNextMovie() {
     const nextMovie = deck.next()
     if (!nextMovie) return
-    setMovie(nextMovie)
+    setSession({ movie: nextMovie, round: createRound(nextMovie) })
     setActiveLevel(0)
     setIsPlaying(false)
+    setPlayerReady(false)
+    setPlayerError(null)
     setFeedback(null)
     setFocusToken((t) => t + 1)
   }
@@ -101,8 +105,10 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
   if (!movie || !round) {
     return (
       <div className="loading">
-        <span className="spinner" aria-hidden />
-        <p>Loading clips…</p>
+        <p>No clips found for {DIFFICULTY_LABELS[difficulty]}.</p>
+        <button type="button" className="btn btn-primary" onClick={onExit}>
+          Back to modes
+        </button>
       </div>
     )
   }
@@ -110,6 +116,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
   const guessesLeft = MAX_LEVELS - round.guesses.length
   const canShowMore = !round.finished && round.unlockedLevel < MAX_LEVELS - 1
   const clipLength = clipDurationForLevel(activeLevel)
+  const canPlay = playerReady && !playerError
 
   return (
     <div className="board">
@@ -131,11 +138,10 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
             playToken={playToken}
             onPlayingChange={setIsPlaying}
             onReadyChange={setPlayerReady}
+            onErrorChange={setPlayerError}
           />
         </div>
 
-        {/* Kept opaque unless the clip is actually running, so the YouTube
-            thumbnail and title chrome can never give the answer away. */}
         <div className={`screen-cover ${isPlaying ? 'is-hidden' : ''}`}>
           {round.finished ? (
             <button type="button" className="screen-replay" onClick={() => play(activeLevel)}>
@@ -146,13 +152,17 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
               type="button"
               className="screen-play"
               onClick={() => play(activeLevel)}
-              disabled={!playerReady}
+              disabled={!canPlay}
             >
               <span className="screen-play-icon" aria-hidden>
                 ▶
               </span>
               <span className="screen-play-label">
-                {playerReady ? `Play ${formatDuration(clipLength)}` : 'Loading…'}
+                {playerError
+                  ? playerError
+                  : playerReady
+                    ? `Play ${formatDuration(clipLength)}`
+                    : 'Loading player…'}
               </span>
             </button>
           )}
