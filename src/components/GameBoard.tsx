@@ -44,7 +44,6 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
   const [activeLevel, setActiveLevel] = useState(0)
   const [playToken, setPlayToken] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [playerReady, setPlayerReady] = useState(false)
   const [playerError, setPlayerError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [focusToken, setFocusToken] = useState(0)
@@ -96,7 +95,6 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
     setSession({ movie: nextMovie, round: createRound(nextMovie) })
     setActiveLevel(0)
     setIsPlaying(false)
-    setPlayerReady(false)
     setPlayerError(null)
     setFeedback(null)
     setFocusToken((t) => t + 1)
@@ -116,7 +114,6 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
   const guessesLeft = MAX_LEVELS - round.guesses.length
   const canShowMore = !round.finished && round.unlockedLevel < MAX_LEVELS - 1
   const clipLength = clipDurationForLevel(activeLevel)
-  const canPlay = playerReady && !playerError
 
   return (
     <div className="board">
@@ -137,7 +134,6 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
             durationSec={clipLength}
             playToken={playToken}
             onPlayingChange={setIsPlaying}
-            onReadyChange={setPlayerReady}
             onErrorChange={setPlayerError}
           />
         </div>
@@ -152,17 +148,12 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
               type="button"
               className="screen-play"
               onClick={() => play(activeLevel)}
-              disabled={!canPlay}
             >
               <span className="screen-play-icon" aria-hidden>
                 ▶
               </span>
               <span className="screen-play-label">
-                {playerError
-                  ? playerError
-                  : playerReady
-                    ? `Play ${formatDuration(clipLength)}`
-                    : 'Loading player…'}
+                {playerError ?? `Play ${formatDuration(clipLength)}`}
               </span>
             </button>
           )}
