@@ -1807,6 +1807,50 @@
     "channel": "Prime Movies"
   },
   {
+    "id": "columbus-2017",
+    "title": "Columbus",
+    "year": 2017,
+    "difficulty": "hard",
+    "aliases": [],
+    "youtubeId": "r3dcnV6Z9Zs",
+    "startSec": 44,
+    "durationSec": 125,
+    "channel": "Rotten Tomatoes Indie"
+  },
+  {
+    "id": "minari-2020",
+    "title": "Minari",
+    "year": 2020,
+    "difficulty": "hard",
+    "aliases": [],
+    "youtubeId": "KQ0gFidlro8",
+    "startSec": 44,
+    "durationSec": 125,
+    "channel": "A24"
+  },
+  {
+    "id": "sound-of-metal-2019",
+    "title": "Sound of Metal",
+    "year": 2019,
+    "difficulty": "hard",
+    "aliases": [],
+    "youtubeId": "VFOrGkAvjAE",
+    "startSec": 61,
+    "durationSec": 173,
+    "channel": "Prime Video"
+  },
+  {
+    "id": "the-rider-2017",
+    "title": "The Rider",
+    "year": 2017,
+    "difficulty": "hard",
+    "aliases": [],
+    "youtubeId": "AlrWRttLTkg",
+    "startSec": 46,
+    "durationSec": 130,
+    "channel": "Sony Pictures Classics"
+  },
+  {
     "id": "leave-no-trace-2018",
     "title": "Leave No Trace",
     "year": 2018,
@@ -1928,27 +1972,5 @@
     "startSec": 36,
     "durationSec": 102,
     "channel": "TIFF"
-  },
-  {
-    "id": "saint-maud-2019",
-    "title": "Saint Maud",
-    "year": 2019,
-    "difficulty": "hard",
-    "aliases": [],
-    "youtubeId": "EXs2-TY9qok",
-    "startSec": 46,
-    "durationSec": 132,
-    "channel": "A24"
-  },
-  {
-    "id": "the-green-knight-2021",
-    "title": "The Green Knight",
-    "year": 2021,
-    "difficulty": "hard",
-    "aliases": [],
-    "youtubeId": "sS6ksY8xWCY",
-    "startSec": 51,
-    "durationSec": 145,
-    "channel": "A24"
   }
 ]
