@@ -22,6 +22,7 @@ import { ClipTimeline } from './ClipTimeline'
 import { GuessInput } from './GuessInput'
 import { RoundResult } from './RoundResult'
 import { StatsBar } from './StatsBar'
+import { WinCelebration } from './WinCelebration'
 
 interface GameBoardProps {
   difficulty: Difficulty
@@ -48,6 +49,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
   const [playerError, setPlayerError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [focusToken, setFocusToken] = useState(0)
+  const [celebrating, setCelebrating] = useState(false)
 
   const play = useCallback((level: number) => {
     setActiveLevel(level)
@@ -67,6 +69,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
       setStats(updated)
       saveBest(difficulty, updated.score)
       setFeedback(null)
+      if (next.won) setCelebrating(true)
       return
     }
 
@@ -100,8 +103,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
     setPlayerError(null)
     setFeedback(null)
     setFocusToken((t) => t + 1)
-    // Do NOT reset playerReady — the YouTube player stays mounted and is
-    // already ready; only the cued video changes via the videoId effect.
+    setCelebrating(false)
   }
 
   if (!movie || !round) {
@@ -173,9 +175,24 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
         <div className="screen-mask screen-mask-bottom" aria-hidden />
       </div>
 
-      {round.finished ? (
-        <RoundResult round={round} movie={movie} onNext={handleNextMovie} />
-      ) : (
+      {celebrating && round.won && (
+        <WinCelebration
+          points={scoreForLevel(round.wonAtLevel ?? 0)}
+          clipLevel={round.wonAtLevel ?? 0}
+          onDone={() => setCelebrating(false)}
+        />
+      )}
+
+      {round.finished && (!round.won || !celebrating) && (
+        <RoundResult
+          round={round}
+          movie={movie}
+          onNext={handleNextMovie}
+          animateIn={round.won}
+        />
+      )}
+
+      {!round.finished && (
         <>
           <div className="play-meta">
             <span>

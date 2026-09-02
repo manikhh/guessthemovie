@@ -1,0 +1,61 @@
+import { useEffect } from 'react'
+import { CLIP_DURATIONS, formatDuration } from '../lib/game'
+
+interface WinCelebrationProps {
+  points: number
+  clipLevel: number
+  onDone?: () => void
+}
+
+const CONFETTI = Array.from({ length: 28 }, (_, i) => ({
+  id: i,
+  left: `${(i * 17 + 7) % 100}%`,
+  delay: `${(i % 7) * 0.04}s`,
+  hue: (i * 47) % 360,
+  size: 6 + (i % 4) * 3,
+}))
+
+export function WinCelebration({ points, clipLevel, onDone }: WinCelebrationProps) {
+  useEffect(() => {
+    const t = window.setTimeout(() => onDone?.(), 2800)
+    return () => window.clearTimeout(t)
+  }, [onDone])
+
+  return (
+    <div className="win-celebration" role="status" aria-live="polite">
+      <div className="win-burst" aria-hidden />
+      <div className="win-rays" aria-hidden />
+
+      <div className="win-confetti" aria-hidden>
+        {CONFETTI.map((c) => (
+          <span
+            key={c.id}
+            className="win-confetti-piece"
+            style={{
+              left: c.left,
+              animationDelay: c.delay,
+              width: c.size,
+              height: c.size * 1.4,
+              background: `hsl(${c.hue} 85% 58%)`,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="win-prize">
+        <div className="win-trophy" aria-hidden>
+          🏆
+        </div>
+        <p className="win-label">Correct!</p>
+        <p className="win-points">
+          <span className="win-points-plus">+</span>
+          <span className="win-points-num">{points}</span>
+        </p>
+        <p className="win-points-sub">points</p>
+        <p className="win-clip-note">
+          from {formatDuration(CLIP_DURATIONS[clipLevel]!)} clip
+        </p>
+      </div>
+    </div>
+  )
+}
