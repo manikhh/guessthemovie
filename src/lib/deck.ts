@@ -1,22 +1,16 @@
 import type { Difficulty, MovieClip } from '../types'
-import { getClipsForDifficulty, getRankedClips } from './difficulty'
-
-export type DeckPool = Difficulty | 'ranked'
+import { getClipsForDifficulty } from './difficulty'
 
 /** A reshuffling queue so a session never repeats a film until the pool is exhausted. */
 export class Deck {
   private queue: MovieClip[] = []
 
-  constructor(private readonly pool: DeckPool) {
+  constructor(private readonly difficulty: Difficulty) {
     this.refill()
   }
 
-  private poolClips(): MovieClip[] {
-    return this.pool === 'ranked' ? getRankedClips() : getClipsForDifficulty(this.pool)
-  }
-
   private refill(lastId?: string) {
-    const shuffled = shuffle(this.poolClips())
+    const shuffled = shuffle(getClipsForDifficulty(this.difficulty))
 
     // Avoid showing the same film twice across a reshuffle boundary.
     if (lastId && shuffled.length > 1 && shuffled[0]?.id === lastId) {
@@ -33,6 +27,11 @@ export class Deck {
     const movie = this.queue.shift()!
     if (this.queue.length === 0) this.refill(movie.id)
     return movie
+  }
+
+  /** Next film in the queue without removing it — used to prefetch video. */
+  peek(): MovieClip | null {
+    return this.queue[0] ?? null
   }
 
   get remaining(): number {

@@ -1,31 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Difficulty } from './types'
-import { FactoryMark } from './components/FactoryMark'
 import { ModeSelect } from './components/ModeSelect'
 import { GameBoard } from './components/GameBoard'
-import { RankHub } from './components/RankHub'
+import { loadYouTubeApi } from './lib/youtube'
 
-type Screen =
-  | { view: 'menu' }
-  | { view: 'game'; difficulty: Difficulty; ranked?: false }
-  | { view: 'game'; ranked: true }
-  | { view: 'ranks' }
+type Screen = { view: 'menu' } | { view: 'game'; difficulty: Difficulty }
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ view: 'menu' })
-  const compact = screen.view !== 'menu'
+
+  useEffect(() => {
+    loadYouTubeApi().catch(() => {})
+  }, [])
 
   return (
     <div className="app">
-      <header className={`masthead ${compact ? 'is-compact' : ''}`}>
-        <div className="brand">
-          <FactoryMark className="brand-mark" />
-          <div className="brand-lockup">
-            <h1 className="brand-name">Chocolate</h1>
-            <p className="brand-factory">Factory</p>
-            <p className="brand-studios">Game Studios</p>
-          </div>
-        </div>
+      <header className="masthead">
+        <h1 className="wordmark">
+          Guess<span>The</span>Movie
+        </h1>
         {screen.view === 'menu' && (
           <p className="masthead-sub">One frame. One guess. How fast can you name it?</p>
         )}
@@ -33,15 +26,7 @@ export default function App() {
 
       <main className="main">
         {screen.view === 'menu' ? (
-          <ModeSelect
-            onSelect={(difficulty) => setScreen({ view: 'game', difficulty })}
-            onPlayRanked={() => setScreen({ view: 'game', ranked: true })}
-            onOpenRanks={() => setScreen({ view: 'ranks' })}
-          />
-        ) : screen.view === 'ranks' ? (
-          <RankHub onBack={() => setScreen({ view: 'menu' })} />
-        ) : screen.ranked ? (
-          <GameBoard key="ranked" ranked onExit={() => setScreen({ view: 'menu' })} />
+          <ModeSelect onSelect={(difficulty) => setScreen({ view: 'game', difficulty })} />
         ) : (
           <GameBoard
             key={screen.difficulty}
@@ -50,10 +35,6 @@ export default function App() {
           />
         )}
       </main>
-
-      <footer className="site-footer">
-        <p className="watermark">by Chocolate Factory</p>
-      </footer>
     </div>
   )
 }

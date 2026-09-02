@@ -1,61 +1,20 @@
 import type { Difficulty } from '../types'
-import { DIFFICULTY_HINTS, DIFFICULTY_LABELS, getClipsForDifficulty, getRankedClips } from '../lib/difficulty'
+import { DIFFICULTY_HINTS, DIFFICULTY_LABELS, getClipsForDifficulty } from '../lib/difficulty'
 import { loadBest } from '../lib/game'
-import { findClan, loadProfile, rankOf, yourPlace } from '../lib/rank'
-import { RankBadge } from './RankBadge'
 
 interface ModeSelectProps {
   onSelect: (difficulty: Difficulty) => void
-  onPlayRanked: () => void
-  onOpenRanks: () => void
 }
 
 const MODES: Difficulty[] = ['easy', 'medium', 'hard']
 
-export function ModeSelect({ onSelect, onPlayRanked, onOpenRanks }: ModeSelectProps) {
-  const you = loadProfile()
-  const rank = rankOf(you)
-  const clan = findClan(you.clanId)
-  const rankedPlace = yourPlace('ranked')
-  const rankedCount = getRankedClips().length
-
+export function ModeSelect({ onSelect }: ModeSelectProps) {
   return (
     <div className="menu">
       <p className="menu-intro">
-        Step into the factory. A trailer flashes for a fifth of a second. Name the film. Need
-        longer? Take it — but every extra second costs you points.
+        A trailer plays for a fifth of a second. Name the film. Need longer? Take it — but
+        every extra second costs you points.
       </p>
-
-      <button type="button" className="rank-entry" onClick={onOpenRanks}>
-        <RankBadge rank={rank} size="sm" />
-        <span className="rank-entry-copy">
-          <strong>{rank.name}</strong>
-          <em>
-            {you.placementsLeft > 0
-              ? `${5 - you.placementsLeft}/5 placements`
-              : `#${rankedPlace} · ${you.rp} RP`}
-            {clan ? ` · [${clan.tag}]` : ''}
-          </em>
-        </span>
-        <span className="rank-entry-go">Board</span>
-      </button>
-
-      <button
-        type="button"
-        className="ranked-play"
-        onClick={onPlayRanked}
-        disabled={rankedCount === 0}
-      >
-        <span className="ranked-play-kicker">
-          {you.placementsLeft > 0 ? 'Placement match' : 'Ranked match'}
-        </span>
-        <span className="ranked-play-title">Play Ranked</span>
-        <span className="ranked-play-hint">
-          Medium + Hard pool · win RP, lose RP · {rankedCount} films
-        </span>
-      </button>
-
-      <p className="menu-section-label">Casual</p>
 
       <div className="menu-grid">
         {MODES.map((mode) => {

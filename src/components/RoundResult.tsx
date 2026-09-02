@@ -1,23 +1,16 @@
 import type { MovieClip, RoundState } from '../types'
 import { CLIP_DURATIONS, formatDuration, scoreForLevel } from '../lib/game'
-import { rankChangeLabel, type RankChange } from '../lib/rank'
 
 interface RoundResultProps {
   round: RoundState
   movie: MovieClip
   onNext: () => void
-  rankChange?: RankChange | null
+  onPrefetchNext?: () => void
   /** Win celebration just played — slide result in gently. */
   animateIn?: boolean
 }
 
-export function RoundResult({
-  round,
-  movie,
-  onNext,
-  rankChange,
-  animateIn = false,
-}: RoundResultProps) {
+export function RoundResult({ round, movie, onNext, onPrefetchNext, animateIn = false }: RoundResultProps) {
   const won = round.won
   const level = round.wonAtLevel ?? 0
   const points = scoreForLevel(level)
@@ -32,11 +25,17 @@ export function RoundResult({
           <p className="result-detail">
             Nailed it from a {formatDuration(CLIP_DURATIONS[level]!)} clip
           </p>
-          {rankChange && <RankLine change={rankChange} />}
         </div>
 
         <div className="result-actions">
-          <button type="button" className="btn btn-primary btn-lg" onClick={onNext} autoFocus>
+          <button
+            type="button"
+            className="btn btn-primary btn-lg"
+            onClick={onNext}
+            onMouseEnter={onPrefetchNext}
+            onFocus={onPrefetchNext}
+            autoFocus
+          >
             Next movie
           </button>
           <a
@@ -58,10 +57,16 @@ export function RoundResult({
       <h2 className="result-title">{movie.title}</h2>
       <p className="result-year">{movie.year}</p>
       <p className="result-detail">No points this round</p>
-      {rankChange && <RankLine change={rankChange} />}
 
       <div className="result-actions">
-        <button type="button" className="btn btn-primary btn-lg" onClick={onNext} autoFocus>
+        <button
+          type="button"
+          className="btn btn-primary btn-lg"
+          onClick={onNext}
+          onMouseEnter={onPrefetchNext}
+          onFocus={onPrefetchNext}
+          autoFocus
+        >
           Next movie
         </button>
         <a
@@ -74,18 +79,5 @@ export function RoundResult({
         </a>
       </div>
     </section>
-  )
-}
-
-function RankLine({ change }: { change: RankChange }) {
-  const rp =
-    change.kind === 'placement' || change.kind === 'placed'
-      ? rankChangeLabel(change.kind)
-      : `${change.delta > 0 ? '+' : ''}${change.delta} RP`
-
-  return (
-    <p className={`result-rank result-rank-${change.kind}`}>
-      {change.after.name} · {rp}
-    </p>
   )
 }

@@ -17,35 +17,27 @@ import {
   scoreForLevel,
   unlockNextLevel,
 } from '../lib/game'
-import { applyRankedMatch, loadProfile, rankOf, recordCasualPoints, type RankChange } from '../lib/rank'
 import { YouTubePlayer, type YouTubePlayerHandle } from './YouTubePlayer'
 import { ClipTimeline } from './ClipTimeline'
 import { GuessInput } from './GuessInput'
 import { RoundResult } from './RoundResult'
 import { StatsBar } from './StatsBar'
 import { WinCelebration } from './WinCelebration'
-import { RankFlash } from './RankFlash'
-import { RankBadge } from './RankBadge'
 import { PlayIcon } from './icons'
 
-function shouldFlashRank(kind: RankChange['kind']): boolean {
-  return kind !== 'hold'
+interface GameBoardProps {
+  difficulty: Difficulty
+  onExit: () => void
 }
-
-type GameBoardProps =
-  | { ranked: true; difficulty?: never; onExit: () => void }
-  | { ranked?: false; difficulty: Difficulty; onExit: () => void }
 
 function startSession(deck: Deck): { movie: MovieClip | null; round: RoundState | null } {
   const movie = deck.next()
   return { movie, round: movie ? createRound(movie) : null }
 }
 
-export function GameBoard(props: GameBoardProps) {
-  const ranked = props.ranked === true
-  const pool = ranked ? 'ranked' : props.difficulty
-  const deck = useMemo(() => new Deck(pool), [pool])
-  const best = useRef(ranked ? 0 : loadBest(props.difficulty))
+export function GameBoard({ difficulty, onExit }: GameBoardProps) {
+  const deck = useMemo(() => new Deck(difficulty), [difficulty])
+  const best = useRef(loadBest(difficulty))
 
   const [session, setSession] = useState(() => startSession(deck))
   const { movie, round } = session
@@ -54,60 +46,22 @@ export function GameBoard(props: GameBoardProps) {
   const [activeLevel, setActiveLevel] = useState(0)
   const playerRef = useRef<YouTubePlayerHandle>(null)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [isStarting, setIsStarting] = useState(false)
   const [playerReady, setPlayerReady] = useState(false)
   const [playerError, setPlayerError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [focusToken, setFocusToken] = useState(0)
   const [celebrating, setCelebrating] = useState(false)
-  const [rankChange, setRankChange] = useState<RankChange | null>(null)
-  const [flashRank, setFlashRank] = useState(false)
-  const [profileTick, setProfileTick] = useState(0)
-  const profile = useMemo(() => loadProfile(), [profileTick])
-  const liveRank = rankChange?.after ?? rankOf(profile)
 
   const play = useCallback((level: number) => {
     setActiveLevel(level)
     setPlayerError(null)
-    setIsStarting(true)
     playerRef.current?.play()
   }, [])
 
-  function handlePlayingChange(playing: boolean) {
-    setIsPlaying(playing)
-    if (playing) setIsStarting(false)
-    else setIsStarting(false)
-  }
-
-  function finishRound(next: RoundState) {
-    const updated = applyRoundToStats(stats, next)
-    setStats(updated)
-    if (!ranked) saveBest(props.difficulty, updated.score)
-
-    const gained = next.won ? scoreForLevel(next.wonAtLevel ?? 0) : 0
-
-    if (ranked) {
-      const change = applyRankedMatch({
-        won: next.won,
-        clipLevel: next.wonAtLevel ?? next.unlockedLevel,
-        scorePoints: gained,
-      })
-      setRankChange(change)
-      setProfileTick((n) => n + 1)
-      setFeedback(null)
-      if (next.won) setCelebrating(true)
-      else if (shouldFlashRank(change.kind)) setFlashRank(true)
-      return
-    }
-
-    if (gained > 0) {
-      recordCasualPoints(gained)
-      setProfileTick((n) => n + 1)
-    }
-    setRankChange(null)
-    setFeedback(null)
-    if (next.won) setCelebrating(true)
-  }
+  const prefetchNextMovie = useCallback(() => {
+    const next = deck.peek()
+    if (next) playerRef.current?.preloadNext(next.youtubeId, next.startSec)
+  }, [deck])
 
   function handleGuess(guess: string) {
     if (!round || !movie || round.finished) return
@@ -117,7 +71,11 @@ export function GameBoard(props: GameBoardProps) {
     setSession((s) => ({ ...s, round: next }))
 
     if (next.finished) {
-      finishRound(next)
+      const updated = applyRoundToStats(stats, next)
+      setStats(updated)
+      saveBest(difficulty, updated.score)
+      setFeedback(null)
+      if (next.won) setCelebrating(true)
       return
     }
 
@@ -137,7 +95,9 @@ export function GameBoard(props: GameBoardProps) {
     if (!round || round.finished) return
     const next = giveUp(round)
     setSession((s) => ({ ...s, round: next }))
-    finishRound(next)
+    const updated = applyRoundToStats(stats, next)
+    setStats(updated)
+    saveBest(difficulty, updated.score)
   }
 
   function handleNextMovie() {
@@ -146,20 +106,18 @@ export function GameBoard(props: GameBoardProps) {
     setSession({ movie: nextMovie, round: createRound(nextMovie) })
     setActiveLevel(0)
     setIsPlaying(false)
-    setIsStarting(false)
+    setPlayerReady(false)
     setPlayerError(null)
     setFeedback(null)
     setFocusToken((t) => t + 1)
     setCelebrating(false)
-    setRankChange(null)
-    setFlashRank(false)
   }
 
   if (!movie || !round) {
     return (
       <div className="loading">
-        <p>{ranked ? 'No ranked clips available.' : `No clips found for ${DIFFICULTY_LABELS[props.difficulty]}.`}</p>
-        <button type="button" className="btn btn-primary" onClick={props.onExit}>
+        <p>No clips found for {DIFFICULTY_LABELS[difficulty]}.</p>
+        <button type="button" className="btn btn-primary" onClick={onExit}>
           Back to modes
         </button>
       </div>
@@ -169,36 +127,17 @@ export function GameBoard(props: GameBoardProps) {
   const guessesLeft = MAX_LEVELS - round.guesses.length
   const canShowMore = !round.finished && round.unlockedLevel < MAX_LEVELS - 1
   const clipLength = clipDurationForLevel(activeLevel)
-  const placementRound = profile.placementsLeft > 0 ? 6 - profile.placementsLeft : null
 
   return (
-    <div className={`board ${ranked ? 'board-ranked' : ''}`}>
+    <div className="board">
       <div className="board-top">
-        <button type="button" className="btn btn-quiet" onClick={props.onExit}>
+        <button type="button" className="btn btn-quiet" onClick={onExit}>
           ← Modes
         </button>
-        {ranked ? (
-          <span className="ranked-chip">
-            <RankBadge rank={liveRank} size="sm" />
-            <span>{liveRank.name}</span>
-          </span>
-        ) : (
-          <span className={`chip chip-${props.difficulty}`}>{DIFFICULTY_LABELS[props.difficulty]}</span>
-        )}
+        <span className={`chip chip-${difficulty}`}>{DIFFICULTY_LABELS[difficulty]}</span>
       </div>
 
-      {ranked ? (
-        <div className="ranked-banner">
-          <span>
-            {placementRound
-              ? `Placement ${Math.min(5, placementRound)}/5`
-              : 'Ranked match'}
-          </span>
-          <span>{liveRank.family === 'unranked' ? 'Unranked' : `${liveRank.rp} RP`}</span>
-        </div>
-      ) : (
-        <StatsBar stats={stats} best={best.current} />
-      )}
+      <StatsBar stats={stats} best={best.current} />
 
       <div className="screen">
         <div className="screen-video">
@@ -207,16 +146,13 @@ export function GameBoard(props: GameBoardProps) {
             videoId={movie.youtubeId}
             startSec={movie.startSec}
             durationSec={clipLength}
-            onPlayingChange={handlePlayingChange}
+            onPlayingChange={setIsPlaying}
             onReadyChange={setPlayerReady}
-            onErrorChange={(err) => {
-              setPlayerError(err)
-              if (err) setIsStarting(false)
-            }}
+            onErrorChange={setPlayerError}
           />
         </div>
 
-        <div className={`screen-cover ${isPlaying || isStarting ? 'is-hidden' : ''}`}>
+        <div className={`screen-cover ${isPlaying ? 'is-hidden' : ''}`}>
           {round.finished ? (
             <button type="button" className="screen-replay" onClick={() => play(activeLevel)}>
               Replay {formatDuration(clipLength)}
@@ -234,7 +170,7 @@ export function GameBoard(props: GameBoardProps) {
                   ? playerError
                   : playerReady
                     ? `Play ${formatDuration(clipLength)}`
-                    : 'Buffering clip…'}
+                    : 'Loading player…'}
               </span>
             </button>
           )}
@@ -248,23 +184,16 @@ export function GameBoard(props: GameBoardProps) {
         <WinCelebration
           points={scoreForLevel(round.wonAtLevel ?? 0)}
           clipLevel={round.wonAtLevel ?? 0}
-          onDone={() => {
-            setCelebrating(false)
-            if (ranked && rankChange && shouldFlashRank(rankChange.kind)) setFlashRank(true)
-          }}
+          onDone={() => setCelebrating(false)}
         />
       )}
 
-      {flashRank && rankChange && (
-        <RankFlash change={rankChange} onDone={() => setFlashRank(false)} />
-      )}
-
-      {round.finished && (!round.won || !celebrating) && !flashRank && (
+      {round.finished && (!round.won || !celebrating) && (
         <RoundResult
           round={round}
           movie={movie}
-          rankChange={ranked ? rankChange : null}
           onNext={handleNextMovie}
+          onPrefetchNext={prefetchNextMovie}
           animateIn={round.won}
         />
       )}
@@ -276,9 +205,7 @@ export function GameBoard(props: GameBoardProps) {
               Clip {activeLevel + 1} · {formatDuration(clipLength)}
             </span>
             <span className="play-meta-points">
-              {ranked
-                ? `Worth ${scoreForLevel(round.unlockedLevel)} pts · RP on the line`
-                : `Worth ${scoreForLevel(round.unlockedLevel)} pts`}
+              Worth {scoreForLevel(round.unlockedLevel)} pts
             </span>
           </div>
 

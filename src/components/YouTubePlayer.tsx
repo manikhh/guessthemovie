@@ -9,6 +9,8 @@ import {
 export interface YouTubePlayerHandle {
   /** Call synchronously inside a user click handler. */
   play: () => void
+  /** Warm the next clip while idle (e.g. hover on Next). */
+  preloadNext: (videoId: string, startSec: number) => void
 }
 
 interface YouTubePlayerProps {
@@ -229,6 +231,18 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
           return
         }
         startPlayback()
+      },
+      preloadNext(nextVideoId: string, nextStartSec: number) {
+        if (!apiReadyRef.current || playingRef.current || awaitingPlayRef.current) return
+        try {
+          playerRef.current?.mute()
+          playerRef.current?.loadVideoById({
+            videoId: nextVideoId,
+            startSeconds: nextStartSec,
+          })
+        } catch {
+          /* ignore */
+        }
       },
     }))
 
