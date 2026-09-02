@@ -26,7 +26,7 @@ jobs:
       - run: npm ci
 
       - name: Fetch missing YouTube trailers
-        run: npm run build-clips
+        run: node scripts/build-clips.mjs
 
       - name: Commit updated clips.json
         run: |
