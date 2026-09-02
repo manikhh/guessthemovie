@@ -190,6 +190,8 @@ function scoreCandidate(cand, movie) {
   return score
 }
 
+const DEFAULT_TRAILER_SEC = 120
+
 async function verifyEmbeddable(videoId, fallbackLengthSec = null) {
   const embedRes = await politeFetch(`https://www.youtube.com/embed/${videoId}`, `embed ${videoId}`, {
     retries: 1,
@@ -201,6 +203,8 @@ async function verifyEmbeddable(videoId, fallbackLengthSec = null) {
   }
 
   let lengthSec = fallbackLengthSec
+  const embedLen = embedHtml.match(/"lengthSeconds":"(\d+)"/)?.[1]
+  if (embedLen) lengthSec = Number(embedLen)
 
   const pageRes = await politeFetch(`https://www.youtube.com/watch?v=${videoId}`, `watch ${videoId}`, {
     retries: 1,
@@ -215,7 +219,7 @@ async function verifyEmbeddable(videoId, fallbackLengthSec = null) {
   }
 
   if (!lengthSec || lengthSec < 30) {
-    return { ok: false, reason: 'no duration' }
+    lengthSec = DEFAULT_TRAILER_SEC
   }
 
   return { ok: true, lengthSec }
