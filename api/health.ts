@@ -1,4 +1,4 @@
-/** Tiny serverless endpoint — visit /api/health to see Vercel Runtime Logs. */
+/** Tiny serverless endpoint — visit /apadsfi/health to see Vercel Runtime Logs. */
 export default function handler(
   _req: { method?: string },
   res: { status: (n: number) => { json: (body: unknown) => void } },
