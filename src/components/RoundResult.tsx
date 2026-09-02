@@ -1,62 +1,30 @@
 import type { MovieClip, RoundState } from '../types'
 import { CLIP_DURATIONS, formatDuration, scoreForLevel } from '../lib/game'
+import { ExternalLink, SkipForward } from './icons'
 
 interface RoundResultProps {
   round: RoundState
   movie: MovieClip
   onNext: () => void
   onPrefetchNext?: () => void
-  /** Win celebration just played — slide result in gently. */
-  animateIn?: boolean
 }
 
-export function RoundResult({ round, movie, onNext, onPrefetchNext, animateIn = false }: RoundResultProps) {
+export function RoundResult({ round, movie, onNext, onPrefetchNext }: RoundResultProps) {
   const won = round.won
   const level = round.wonAtLevel ?? 0
   const points = scoreForLevel(level)
 
-  if (won) {
-    return (
-      <section className={`result is-won ${animateIn ? 'result-enter' : ''}`}>
-        <div className="result-prize-card">
-          <span className="result-prize-badge">+{points} pts</span>
-          <h2 className="result-title">{movie.title}</h2>
-          <p className="result-year">{movie.year}</p>
-          <p className="result-detail">
-            Nailed it from a {formatDuration(CLIP_DURATIONS[level]!)} clip
-          </p>
-        </div>
-
-        <div className="result-actions">
-          <button
-            type="button"
-            className="btn btn-primary btn-lg"
-            onClick={onNext}
-            onMouseEnter={onPrefetchNext}
-            onFocus={onPrefetchNext}
-            autoFocus
-          >
-            Next movie
-          </button>
-          <a
-            className="btn btn-ghost btn-lg"
-            href={`https://www.youtube.com/watch?v=${movie.youtubeId}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Watch trailer
-          </a>
-        </div>
-      </section>
-    )
-  }
-
   return (
-    <section className="result is-lost">
-      <p className="result-verdict">Out of guesses</p>
+    <section className={`result ${won ? 'is-won' : 'is-lost'}`}>
+      <p className="result-verdict">{won ? '[CORRECT]' : '[OUT OF GUESSES]'}</p>
+      {won && <p className="result-prize">+{points}</p>}
       <h2 className="result-title">{movie.title}</h2>
       <p className="result-year">{movie.year}</p>
-      <p className="result-detail">No points this round</p>
+      <p className="result-detail">
+        {won
+          ? `From a ${formatDuration(CLIP_DURATIONS[level]!)} clip`
+          : 'No points this round'}
+      </p>
 
       <div className="result-actions">
         <button
@@ -67,15 +35,17 @@ export function RoundResult({ round, movie, onNext, onPrefetchNext, animateIn = 
           onFocus={onPrefetchNext}
           autoFocus
         >
-          Next movie
+          Next
+          <SkipForward size={16} strokeWidth={1.5} absoluteStrokeWidth aria-hidden />
         </button>
         <a
-          className="btn btn-ghost btn-lg"
+          className="btn btn-outline btn-lg"
           href={`https://www.youtube.com/watch?v=${movie.youtubeId}`}
           target="_blank"
           rel="noreferrer"
         >
-          Watch trailer
+          Trailer
+          <ExternalLink size={16} strokeWidth={1.5} absoluteStrokeWidth aria-hidden />
         </a>
       </div>
     </section>

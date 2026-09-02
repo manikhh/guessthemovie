@@ -22,7 +22,7 @@ export function ClipTimeline({
         const isActive = level === activeLevel && !finished
 
         return (
-          <li key={level}>
+          <li key={level} style={{ flex: 1, display: 'flex' }}>
             <button
               type="button"
               className={[
@@ -34,10 +34,10 @@ export function ClipTimeline({
                 .join(' ')}
               disabled={!unlocked}
               onClick={() => onPlayLevel(level)}
+              aria-label={`Clip ${level + 1}, ${formatDuration(CLIP_DURATIONS[level]!)}, ${scoreForLevel(level)} points`}
             >
-              <span className="timeline-index">{level + 1}</span>
               <span className="timeline-time">{formatDuration(CLIP_DURATIONS[level]!)}</span>
-              <span className="timeline-points">{scoreForLevel(level)} pts</span>
+              <span className="timeline-points">{scoreForLevel(level)}</span>
             </button>
           </li>
         )

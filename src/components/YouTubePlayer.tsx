@@ -9,6 +9,8 @@ import {
 export interface YouTubePlayerHandle {
   /** Call synchronously inside a user click handler. */
   play: () => void
+  /** Stop the current clip early and return to idle cover. */
+  pause: () => void
   /** Warm the next clip while idle (e.g. hover on Next). */
   preloadNext: (videoId: string, startSec: number) => void
 }
@@ -232,6 +234,10 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
         }
         startPlayback()
       },
+      pause() {
+        if (!playingRef.current && !awaitingPlayRef.current) return
+        stopClip()
+      },
       preloadNext(nextVideoId: string, nextStartSec: number) {
         if (!apiReadyRef.current || playingRef.current || awaitingPlayRef.current) return
         try {
@@ -383,8 +389,10 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
     return (
       <div className="player-mount">
         <div className="player-frame" ref={containerRef} />
+        {/* Blocks hover/click so YouTube never shows its pause overlay / gradients. */}
+        <div className="player-shield" aria-hidden />
         <div className={`player-veil ${veiled ? 'is-on' : ''}`} aria-hidden />
-        {status === 'loading' && <p className="player-status">Buffering clip…</p>}
+        {status === 'loading' && veiled && <p className="player-status">Buffering clip…</p>}
         {status === 'blocked' && (
           <p className="player-status player-status-error">{BLOCKED_MSG}</p>
         )}

@@ -11,15 +11,19 @@
     "validate-clips": "tsx scripts/validate-clips.ts"
   },
   "devDependencies": {
-    "dotenv": "^17.2.3",
-    "tsx": "^4.21.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
     "@vitejs/plugin-react": "^6.1.1",
+    "dotenv": "^17.2.3",
+    "tsx": "^4.21.0",
     "typescript": "~6.0.2",
     "vite": "^8.2.2"
   },
   "dependencies": {
+    "framer-motion": "^13.2.0",
+    "lucide": "^1.39.0",
+    "lucide-react": "^1.39.0",
+    "morphicons": "^1.7.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   }
