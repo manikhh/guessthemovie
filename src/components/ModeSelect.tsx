@@ -12,8 +12,8 @@ export function ModeSelect({ onSelect }: ModeSelectProps) {
   return (
     <div className="menu">
       <p className="menu-intro">
-        A trailer plays for a fifth of a second. Name the film. Need longer? Take it — but
-        every extra second costs you points.
+        Step into the factory. A trailer flashes for a fifth of a second. Name the film. Need
+        longer? Take it — but every extra second costs you points.
       </p>
 
       <div className="menu-grid">

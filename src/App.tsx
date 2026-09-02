@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Difficulty } from './types'
+import { FactoryMark } from './components/FactoryMark'
 import { ModeSelect } from './components/ModeSelect'
 import { GameBoard } from './components/GameBoard'
 import { loadYouTubeApi } from './lib/youtube'
@@ -8,6 +9,7 @@ type Screen = { view: 'menu' } | { view: 'game'; difficulty: Difficulty }
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ view: 'menu' })
+  const compact = screen.view !== 'menu'
 
   useEffect(() => {
     loadYouTubeApi().catch(() => {})
@@ -15,10 +17,15 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="masthead">
-        <h1 className="wordmark">
-          Guess<span>The</span>Movie
-        </h1>
+      <header className={`masthead ${compact ? 'is-compact' : ''}`}>
+        <div className="brand">
+          <FactoryMark className="brand-mark" />
+          <div className="brand-lockup">
+            <h1 className="brand-name">Chocolate</h1>
+            <p className="brand-factory">Factory</p>
+            <p className="brand-studios">Game Studios</p>
+          </div>
+        </div>
         {screen.view === 'menu' && (
           <p className="masthead-sub">One frame. One guess. How fast can you name it?</p>
         )}
@@ -35,6 +42,10 @@ export default function App() {
           />
         )}
       </main>
+
+      <footer className="site-footer">
+        <p className="watermark">by Chocolate Factory</p>
+      </footer>
     </div>
   )
 }
