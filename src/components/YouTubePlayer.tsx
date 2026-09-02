@@ -117,10 +117,8 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       onErrorChangeRef.current?.(null)
 
       try {
-        player.loadVideoById({
-          videoId: videoIdRef.current,
-          startSeconds: startSecRef.current,
-        })
+        // Video is already cued — reload would flash the default thumbnail.
+        player.seekTo(startSecRef.current, true)
         player.playVideo()
       } catch {
         awaitingPlayRef.current = false
@@ -137,8 +135,6 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
           return
         }
         clearTimers()
-        onPlayingChangeRef.current?.(true)
-        playingRef.current = true
         startPlayback()
       },
     }))
@@ -178,6 +174,8 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
                 if (destroyed) return
 
                 if (e.data === YtPlayerState.PLAYING && awaitingPlayRef.current) {
+                  playingRef.current = true
+                  onPlayingChangeRef.current?.(true)
                   const endAt = startSecRef.current + durationRef.current
                   scheduleStopAt(endAt)
                 }
