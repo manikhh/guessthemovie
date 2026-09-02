@@ -439,21 +439,15 @@ input {
 }
 
 .screen-play-icon {
-  display: grid;
-  place-items: center;
   width: 4rem;
   height: 4rem;
-  padding-left: 0.25rem;
-  border-radius: 50%;
-  background: var(--accent);
-  color: #241a05;
-  font-size: 1.5rem;
+  color: var(--accent);
   transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
 }
 
 .screen-play:hover:not(:disabled) .screen-play-icon {
   transform: scale(1.06);
-  box-shadow: 0 0 0 10px rgba(255, 200, 87, 0.1);
+  filter: drop-shadow(0 0 12px rgba(255, 200, 87, 0.35));
 }
 
 .player-mount {
@@ -936,11 +930,27 @@ input {
   }
 }
 
-.win-trophy {
-  font-size: 3.5rem;
-  line-height: 1;
-  filter: drop-shadow(0 8px 24px rgba(255, 200, 87, 0.5));
+.win-trophy-wrap {
+  position: relative;
+  width: 5.5rem;
+  height: 5.5rem;
+  display: grid;
+  place-items: center;
   animation: win-trophy-bounce 0.6s var(--ease) 0.35s both;
+}
+
+.win-star-burst {
+  position: absolute;
+  width: 7.5rem;
+  height: 7.5rem;
+  animation: win-rays-spin 2s linear infinite;
+}
+
+.win-trophy {
+  position: relative;
+  width: 4.5rem;
+  height: auto;
+  filter: drop-shadow(0 8px 24px rgba(255, 200, 87, 0.5));
 }
 
 @keyframes win-trophy-bounce {

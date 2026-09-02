@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { CLIP_DURATIONS, formatDuration } from '../lib/game'
+import { StarBurstIcon, TrophyIcon } from './icons'
 
 interface WinCelebrationProps {
   points: number
@@ -43,8 +44,9 @@ export function WinCelebration({ points, clipLevel, onDone }: WinCelebrationProp
       </div>
 
       <div className="win-prize">
-        <div className="win-trophy" aria-hidden>
-          🏆
+        <div className="win-trophy-wrap" aria-hidden>
+          <StarBurstIcon className="win-star-burst" />
+          <TrophyIcon className="win-trophy" />
         </div>
         <p className="win-label">Correct!</p>
         <p className="win-points">

@@ -23,6 +23,7 @@ import { GuessInput } from './GuessInput'
 import { RoundResult } from './RoundResult'
 import { StatsBar } from './StatsBar'
 import { WinCelebration } from './WinCelebration'
+import { PlayIcon } from './icons'
 
 interface GameBoardProps {
   difficulty: Difficulty
@@ -157,9 +158,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
               onClick={() => play(activeLevel)}
               disabled={!playerReady && !playerError}
             >
-              <span className="screen-play-icon" aria-hidden>
-                ▶
-              </span>
+              <PlayIcon className="screen-play-icon" />
               <span className="screen-play-label">
                 {playerError
                   ? playerError
