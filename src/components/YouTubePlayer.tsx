@@ -35,6 +35,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
     const readyRef = useRef(false)
     const loadedVideoIdRef = useRef<string | null>(null)
     const pendingPlayRef = useRef(false)
+    const clipWarmedRef = useRef(false)
     const playingRef = useRef(false)
     const awaitingPlayRef = useRef(false)
     const pollRef = useRef<number | null>(null)
@@ -76,11 +77,52 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       }
     }
 
+    function isAtClipStart(player: YtPlayer): boolean {
+      try {
+        return Math.abs(player.getCurrentTime() - startSecRef.current) < 0.35
+      } catch {
+        return false
+      }
+    }
+
+    function seekToClipStart(player: YtPlayer) {
+      const target = startSecRef.current
+      try {
+        const current = player.getCurrentTime()
+        if (Math.abs(current - target) < 0.15) return
+        // allowSeekAhead=false when rewinding — true forces a fresh buffer fetch.
+        player.seekTo(target, target > current)
+      } catch {
+        /* ignore */
+      }
+    }
+
+    function resetToClipStart() {
+      const player = playerRef.current
+      if (!player) return
+      try {
+        player.pauseVideo()
+        seekToClipStart(player)
+        clipWarmedRef.current = true
+      } catch {
+        /* ignore */
+      }
+    }
+
     function revealClip(endAt: number) {
       playingRef.current = true
       setFrameVisible(true)
       onPlayingChangeRef.current?.(true)
       scheduleStopAt(endAt)
+    }
+
+    function beginClipPlayback(endAt: number) {
+      const player = playerRef.current
+      if (player && (clipWarmedRef.current || isAtClipStart(player))) {
+        revealClip(endAt)
+        return
+      }
+      waitForClipFrame(endAt)
     }
 
     function waitForClipFrame(endAt: number) {
@@ -109,11 +151,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       playingRef.current = false
       awaitingPlayRef.current = false
       setFrameVisible(false)
-      try {
-        playerRef.current?.pauseVideo()
-      } catch {
-        /* ignore */
-      }
+      resetToClipStart()
       onPlayingChangeRef.current?.(false)
     }
 
@@ -144,10 +182,12 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       if (!player || !readyRef.current) return
 
       if (loadedVideoIdRef.current === videoId) {
+        if (isAtClipStart(player)) clipWarmedRef.current = true
         onReadyChangeRef.current?.(true)
         return
       }
 
+      clipWarmedRef.current = false
       setFrameVisible(false)
       onReadyChangeRef.current?.(false)
       loadedVideoIdRef.current = videoId
@@ -178,10 +218,11 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       try {
         if (loadedVideoIdRef.current !== videoIdRef.current) {
           pendingPlayRef.current = true
+          clipWarmedRef.current = false
           preloadVideo()
           return
         }
-        player.seekTo(startSecRef.current, true)
+        if (!isAtClipStart(player)) seekToClipStart(player)
         player.playVideo()
       } catch {
         awaitingPlayRef.current = false
@@ -250,11 +291,16 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
                 ) {
                   onReadyChangeRef.current?.(true)
 
+                  if (isAtClipStart(e.target)) {
+                    clipWarmedRef.current = true
+                  }
+
                   if (pendingPlayRef.current && loadedVideoIdRef.current === videoIdRef.current) {
                     pendingPlayRef.current = false
                     try {
-                      playerRef.current?.seekTo(startSecRef.current, true)
-                      playerRef.current?.playVideo()
+                      const player = playerRef.current
+                      if (player && !isAtClipStart(player)) seekToClipStart(player)
+                      player?.playVideo()
                     } catch {
                       awaitingPlayRef.current = false
                       onErrorChangeRef.current?.('Playback failed')
@@ -264,7 +310,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
 
                 if (e.data === YtPlayerState.PLAYING && awaitingPlayRef.current) {
                   const endAt = startSecRef.current + durationRef.current
-                  waitForClipFrame(endAt)
+                  beginClipPlayback(endAt)
                 }
 
                 if (e.data === YtPlayerState.ENDED) {
