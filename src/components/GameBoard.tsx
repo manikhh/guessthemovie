@@ -147,38 +147,40 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
 
       <div className="theater-stage">
         <div className={`screen ${isPlaying ? 'is-live' : ''}`}>
-          <div className="screen-video">
-            <YouTubePlayer
-              ref={playerRef}
-              videoId={movie.youtubeId}
-              startSec={movie.startSec}
-              durationSec={clipLength}
-              onPlayingChange={setIsPlaying}
-              onReadyChange={setPlayerReady}
-              onErrorChange={setPlayerError}
-            />
-          </div>
+          <div className="screen-frame">
+            <div className="screen-video">
+              <YouTubePlayer
+                ref={playerRef}
+                videoId={movie.youtubeId}
+                startSec={movie.startSec}
+                durationSec={clipLength}
+                onPlayingChange={setIsPlaying}
+                onReadyChange={setPlayerReady}
+                onErrorChange={setPlayerError}
+              />
+            </div>
 
-          <div className={`screen-cover ${isPlaying ? 'is-hidden' : ''}`}>
-            {finished ? (
-              <button type="button" className="screen-replay" onClick={() => play(activeLevel)}>
-                <RotateCcw size={14} strokeWidth={1.5} absoluteStrokeWidth aria-hidden />
-                Replay {formatDuration(clipLength)}
-              </button>
-            ) : playerError ? (
-              <p className="screen-idle-status">{playerError}</p>
-            ) : !playerReady ? (
-              <p className="screen-idle-status">
-                <LoaderCircle size={14} strokeWidth={1.5} absoluteStrokeWidth className="icon-spin" aria-hidden />
-                [LOADING]
-              </p>
-            ) : null}
-          </div>
+            <div className={`screen-cover ${isPlaying ? 'is-hidden' : ''}`}>
+              {finished ? (
+                <button type="button" className="screen-replay" onClick={() => play(activeLevel)}>
+                  <RotateCcw size={14} strokeWidth={1.5} absoluteStrokeWidth aria-hidden />
+                  Replay {formatDuration(clipLength)}
+                </button>
+              ) : playerError ? (
+                <p className="screen-idle-status">{playerError}</p>
+              ) : !playerReady ? (
+                <p className="screen-idle-status">
+                  <LoaderCircle size={14} strokeWidth={1.5} absoluteStrokeWidth className="icon-spin" aria-hidden />
+                  [LOADING]
+                </p>
+              ) : null}
+            </div>
 
-          <div className="screen-mask screen-mask-top" aria-hidden />
-          <div className="screen-mask screen-mask-bottom" aria-hidden />
-          <div className="screen-mask screen-mask-left" aria-hidden />
-          <div className="screen-mask screen-mask-right" aria-hidden />
+            <div className="screen-mask screen-mask-top" aria-hidden />
+            <div className="screen-mask screen-mask-bottom" aria-hidden />
+            <div className="screen-mask screen-mask-left" aria-hidden />
+            <div className="screen-mask screen-mask-right" aria-hidden />
+          </div>
         </div>
       </div>
 
