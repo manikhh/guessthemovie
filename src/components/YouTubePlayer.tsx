@@ -19,6 +19,8 @@ interface YouTubePlayerProps {
   videoId: string
   startSec: number
   durationSec: number
+  /** 0–100 playback volume applied when the clip is unmuted. */
+  volume?: number
   onPlayingChange?: (playing: boolean) => void
   onErrorChange?: (error: string | null) => void
   /** True only when the clip is buffered and can start instantly. */
@@ -38,7 +40,7 @@ function preferFastQuality(player: YtPlayer) {
 
 export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>(
   function YouTubePlayer(
-    { videoId, startSec, durationSec, onPlayingChange, onErrorChange, onReadyChange },
+    { videoId, startSec, durationSec, volume = 80, onPlayingChange, onErrorChange, onReadyChange },
     ref,
   ) {
     const containerRef = useRef<HTMLDivElement>(null)
@@ -55,18 +57,35 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
     const videoIdRef = useRef(videoId)
     const startSecRef = useRef(startSec)
     const durationRef = useRef(durationSec)
+    const volumeRef = useRef(volume)
     const onPlayingChangeRef = useRef(onPlayingChange)
     const onErrorChangeRef = useRef(onErrorChange)
     const onReadyChangeRef = useRef(onReadyChange)
     videoIdRef.current = videoId
     startSecRef.current = startSec
     durationRef.current = durationSec
+    volumeRef.current = volume
     onPlayingChangeRef.current = onPlayingChange
     onErrorChangeRef.current = onErrorChange
     onReadyChangeRef.current = onReadyChange
 
     const [status, setStatus] = useState<'loading' | 'ready' | 'blocked'>('loading')
     const [veiled, setVeiled] = useState(true)
+
+    function applyAudibleVolume(player: YtPlayer) {
+      const level = Math.max(0, Math.min(100, volumeRef.current))
+      try {
+        if (level <= 0) {
+          player.mute()
+          player.setVolume(0)
+        } else {
+          player.unMute()
+          player.setVolume(level)
+        }
+      } catch {
+        /* ignore */
+      }
+    }
 
     function clearTimers() {
       if (rafRef.current !== null) {
@@ -185,7 +204,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
         setVeiled(true)
         try {
           preferFastQuality(player)
-          player.unMute()
+          applyAudibleVolume(player)
           player.loadVideoById({
             videoId: videoIdRef.current,
             startSeconds: startSecRef.current,
@@ -206,7 +225,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       try {
         preferFastQuality(player)
         // Instant path: buffer already hot — no reload.
-        player.unMute()
+        applyAudibleVolume(player)
         const t = (() => {
           try {
             return player.getCurrentTime()
@@ -251,6 +270,14 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
         }
       },
     }))
+
+    useEffect(() => {
+      if (!apiReadyRef.current || !playingRef.current) return
+      const player = playerRef.current
+      if (!player) return
+      applyAudibleVolume(player)
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [volume])
 
     useEffect(() => {
       let destroyed = false

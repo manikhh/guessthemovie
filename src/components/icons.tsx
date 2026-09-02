@@ -7,4 +7,6 @@ export {
   SkipForward,
   RotateCcw,
   LoaderCircle,
+  Volume2,
+  VolumeX,
 } from 'lucide-react'

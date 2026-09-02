@@ -23,6 +23,7 @@ import { ClipTimeline } from './ClipTimeline'
 import { GuessInput } from './GuessInput'
 import { RoundResult } from './RoundResult'
 import { StatsBar } from './StatsBar'
+import { VolumeBar } from './VolumeBar'
 import { WinCelebration } from './WinCelebration'
 import {
   ChevronLeft,
@@ -43,6 +44,18 @@ function startSession(deck: Deck): { movie: MovieClip | null; round: RoundState 
   return { movie, round: movie ? createRound(movie) : null }
 }
 
+function loadVolume(): number {
+  try {
+    const raw = localStorage.getItem('gtm-volume')
+    if (raw == null) return 80
+    const n = Number(raw)
+    if (Number.isFinite(n)) return Math.max(0, Math.min(100, Math.round(n)))
+  } catch {
+    /* ignore */
+  }
+  return 80
+}
+
 export function GameBoard({ difficulty, onExit }: GameBoardProps) {
   const deck = useMemo(() => new Deck(difficulty), [difficulty])
   const best = useRef(loadBest(difficulty))
@@ -60,6 +73,16 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
   const [focusToken, setFocusToken] = useState(0)
   const [shakeToken, setShakeToken] = useState(0)
   const [celebrating, setCelebrating] = useState(false)
+  const [volume, setVolume] = useState(loadVolume)
+
+  function handleVolumeChange(next: number) {
+    setVolume(next)
+    try {
+      localStorage.setItem('gtm-volume', String(next))
+    } catch {
+      /* ignore */
+    }
+  }
 
   const play = useCallback((level: number) => {
     setActiveLevel(level)
@@ -167,11 +190,14 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
                 videoId={movie.youtubeId}
                 startSec={movie.startSec}
                 durationSec={clipLength}
+                volume={volume}
                 onPlayingChange={setIsPlaying}
                 onReadyChange={setPlayerReady}
                 onErrorChange={setPlayerError}
               />
             </div>
+
+            <VolumeBar volume={volume} onChange={handleVolumeChange} />
 
             <div className={`screen-cover ${isPlaying ? 'is-hidden' : ''}`}>
               {finished ? (
@@ -271,6 +297,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
               <GuessInput
                 disabled={finished}
                 guessesLeft={guessesLeft}
+                difficulty={difficulty}
                 onSubmit={handleGuess}
                 onMore={handleShowMore}
                 onGiveUp={handleGiveUp}
