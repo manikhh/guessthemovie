@@ -1,15 +1,14 @@
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import type { Difficulty } from '../types'
 import { DIFFICULTY_HINTS, DIFFICULTY_LABELS, getClipsForDifficulty } from '../lib/difficulty'
 import { loadBest } from '../lib/game'
 
-interface ModeSelectProps {
-  onSelect: (difficulty: Difficulty) => void
-}
-
 const MODES: Difficulty[] = ['easy', 'medium', 'hard']
 
-export function ModeSelect({ onSelect }: ModeSelectProps) {
+export function ModeSelect() {
+  const navigate = useNavigate()
+
   return (
     <div className="menu">
       <p className="menu-kicker">Select difficulty</p>
@@ -24,7 +23,7 @@ export function ModeSelect({ onSelect }: ModeSelectProps) {
               key={mode}
               type="button"
               className="menu-row"
-              onClick={() => onSelect(mode)}
+              onClick={() => navigate(`/play/${mode}`)}
               disabled={count === 0}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
