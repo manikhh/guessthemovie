@@ -279,7 +279,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
                 loadedVideoIdRef.current = videoIdRef.current
                 setStatus('ready')
                 onErrorChangeRef.current?.(null)
-                onReadyChangeRef.current?.(false)
+                preloadVideo()
               },
               onStateChange: (e) => {
                 if (destroyed) return
