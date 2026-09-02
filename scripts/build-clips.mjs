@@ -191,30 +191,33 @@ function scoreCandidate(cand, movie) {
 }
 
 async function verifyEmbeddable(videoId) {
-  const oembedRes = await politeFetch(
-    `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`,
-    `oembed ${videoId}`,
-    { retries: 0 },
-  )
-  if (!oembedRes.ok) return { ok: false, reason: `oembed ${oembedRes.status}` }
-
   const pageRes = await politeFetch(`https://www.youtube.com/watch?v=${videoId}`, `watch ${videoId}`, {
-    retries: 0,
+    retries: 1,
   })
   if (!pageRes.ok) return { ok: false, reason: `watch ${pageRes.status}` }
   const html = await pageRes.text()
 
+  if (html.includes('consent.youtube.com') && html.length < 80_000) {
+    return { ok: false, reason: 'consent page' }
+  }
+
+  const status = html.match(/"playabilityStatus":\{"status":"(\w+)"/)?.[1]
+  if (status && status !== 'OK') {
+    return { ok: false, reason: `status ${status}` }
+  }
+
   if (/"playableInEmbed":false/.test(html)) {
     return { ok: false, reason: 'embed blocked' }
   }
-  if (/"status":"(ERROR|UNPLAYABLE|LOGIN_REQUIRED)"/.test(html)) {
-    return { ok: false, reason: 'unplayable' }
-  }
 
   const lengthMatch = html.match(/"lengthSeconds":"(\d+)"/)
+  if (!lengthMatch) {
+    return { ok: false, reason: 'no duration' }
+  }
+
   return {
     ok: true,
-    lengthSec: lengthMatch ? Number(lengthMatch[1]) : null,
+    lengthSec: Number(lengthMatch[1]),
   }
 }
 
@@ -259,9 +262,13 @@ async function processMovie(movie) {
       .filter((c) => c.score >= 0)
       .sort((a, b) => b.score - a.score)
 
+    let lastReason = 'no match'
     for (const cand of ranked.slice(0, MAX_CANDIDATE_TRIES)) {
       const verdict = await verifyEmbeddable(cand.videoId)
-      if (!verdict.ok) continue
+      if (!verdict.ok) {
+        lastReason = verdict.reason ?? 'verify failed'
+        continue
+      }
 
       const lengthSec = verdict.lengthSec ?? cand.lengthSec
       return {
@@ -276,7 +283,7 @@ async function processMovie(movie) {
         channel: '',
       }
     }
-    return { failed: movie, reason: ranked.length ? 'none embeddable' : 'no match' }
+    return { failed: movie, reason: ranked.length ? `none embeddable (last: ${lastReason})` : 'no match' }
   } catch (err) {
     return { failed: movie, reason: err.message }
   }
