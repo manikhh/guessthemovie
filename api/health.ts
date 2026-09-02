@@ -1,4 +1,4 @@
-/** Tiny seadfrverless endpoint — visit /api/health to see Vercel Runtime Logs. */
+/** Tiny seadfrvdfdaserless endpoint — visit /api/health to see Vercel Runtime Logs. */
 export default function handler(
   _req: { method?: string },
   res: { status: (n: number) => { json: (body: unknown) => void } },
