@@ -29,6 +29,11 @@ export class Deck {
     return movie
   }
 
+  /** Next film in the queue without removing it — used to prefetch video. */
+  peek(): MovieClip | null {
+    return this.queue[0] ?? null
+  }
+
   get remaining(): number {
     return this.queue.length
   }

@@ -9,6 +9,8 @@ import {
 export interface YouTubePlayerHandle {
   /** Call synchronously inside a user click handler. */
   play: () => void
+  /** Warm the next clip while the player is idle (e.g. hover on Next). */
+  preloadNext: (videoId: string, startSec: number) => void
 }
 
 interface YouTubePlayerProps {
@@ -31,9 +33,12 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
     const containerRef = useRef<HTMLDivElement>(null)
     const playerRef = useRef<YtPlayer | null>(null)
     const readyRef = useRef(false)
+    const loadedVideoIdRef = useRef<string | null>(null)
+    const pendingPlayRef = useRef(false)
     const playingRef = useRef(false)
     const awaitingPlayRef = useRef(false)
     const pollRef = useRef<number | null>(null)
+    const revealPollRef = useRef<number | null>(null)
     const clipTimerRef = useRef<number | null>(null)
 
     const videoIdRef = useRef(videoId)
@@ -50,8 +55,17 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
     onReadyChangeRef.current = onReadyChange
 
     const [status, setStatus] = useState<'loading' | 'ready' | 'blocked'>('loading')
+    const [frameVisible, setFrameVisible] = useState(false)
+
+    function clearRevealPoll() {
+      if (revealPollRef.current !== null) {
+        window.clearInterval(revealPollRef.current)
+        revealPollRef.current = null
+      }
+    }
 
     function clearTimers() {
+      clearRevealPoll()
       if (pollRef.current !== null) {
         window.clearInterval(pollRef.current)
         pollRef.current = null
@@ -62,10 +76,39 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       }
     }
 
+    function revealClip(endAt: number) {
+      playingRef.current = true
+      setFrameVisible(true)
+      onPlayingChangeRef.current?.(true)
+      scheduleStopAt(endAt)
+    }
+
+    function waitForClipFrame(endAt: number) {
+      clearRevealPoll()
+      const player = playerRef.current
+      if (!player) return
+
+      let attempts = 0
+      revealPollRef.current = window.setInterval(() => {
+        attempts += 1
+        try {
+          const atClip = player.getCurrentTime() >= startSecRef.current - 0.5
+          if (atClip || attempts >= 60) {
+            clearRevealPoll()
+            revealClip(endAt)
+          }
+        } catch {
+          clearRevealPoll()
+          stopClip()
+        }
+      }, 50)
+    }
+
     function stopClip() {
       clearTimers()
       playingRef.current = false
       awaitingPlayRef.current = false
+      setFrameVisible(false)
       try {
         playerRef.current?.pauseVideo()
       } catch {
@@ -96,17 +139,33 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       )
     }
 
-    function cueVideo() {
+    function loadClip(videoId: string, startSec: number) {
       const player = playerRef.current
       if (!player || !readyRef.current) return
-      try {
-        player.cueVideoById({
-          videoId: videoIdRef.current,
-          startSeconds: startSecRef.current,
-        })
-      } catch {
-        /* ignore */
+
+      if (loadedVideoIdRef.current === videoId) {
+        onReadyChangeRef.current?.(true)
+        return
       }
+
+      setFrameVisible(false)
+      onReadyChangeRef.current?.(false)
+      loadedVideoIdRef.current = videoId
+      try {
+        player.loadVideoById({ videoId, startSeconds: startSec })
+      } catch {
+        loadedVideoIdRef.current = null
+      }
+    }
+
+    function preloadVideo() {
+      loadClip(videoIdRef.current, startSecRef.current)
+    }
+
+    function warmClip(videoId: string, startSec: number) {
+      if (!readyRef.current || playingRef.current || awaitingPlayRef.current) return
+      if (loadedVideoIdRef.current === videoId) return
+      loadClip(videoId, startSec)
     }
 
     function startPlayback() {
@@ -117,11 +176,16 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       onErrorChangeRef.current?.(null)
 
       try {
-        // Video is already cued — reload would flash the default thumbnail.
+        if (loadedVideoIdRef.current !== videoIdRef.current) {
+          pendingPlayRef.current = true
+          preloadVideo()
+          return
+        }
         player.seekTo(startSecRef.current, true)
         player.playVideo()
       } catch {
         awaitingPlayRef.current = false
+        pendingPlayRef.current = false
         onErrorChangeRef.current?.('Playback failed')
       }
     }
@@ -137,6 +201,9 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
         clearTimers()
         startPlayback()
       },
+      preloadNext(videoId: string, startSec: number) {
+        warmClip(videoId, startSec)
+      },
     }))
 
     useEffect(() => {
@@ -149,8 +216,10 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
           playerRef.current = createPlayer(containerRef.current, {
             height: '100%',
             width: '100%',
+            videoId: videoIdRef.current,
             playerVars: {
               autoplay: 0,
+              cc_load_policy: 0,
               controls: 0,
               disablekb: 1,
               enablejsapi: 1,
@@ -159,25 +228,43 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
               modestbranding: 1,
               playsinline: 1,
               rel: 0,
+              start: startSecRef.current,
               origin: window.location.origin,
             },
             events: {
               onReady: () => {
                 if (destroyed) return
                 readyRef.current = true
+                loadedVideoIdRef.current = videoIdRef.current
                 setStatus('ready')
-                onReadyChangeRef.current?.(true)
                 onErrorChangeRef.current?.(null)
-                cueVideo()
+                onReadyChangeRef.current?.(false)
               },
               onStateChange: (e) => {
                 if (destroyed) return
 
+                if (
+                  (e.data === YtPlayerState.PAUSED || e.data === YtPlayerState.CUED) &&
+                  !awaitingPlayRef.current &&
+                  !playingRef.current
+                ) {
+                  onReadyChangeRef.current?.(true)
+
+                  if (pendingPlayRef.current && loadedVideoIdRef.current === videoIdRef.current) {
+                    pendingPlayRef.current = false
+                    try {
+                      playerRef.current?.seekTo(startSecRef.current, true)
+                      playerRef.current?.playVideo()
+                    } catch {
+                      awaitingPlayRef.current = false
+                      onErrorChangeRef.current?.('Playback failed')
+                    }
+                  }
+                }
+
                 if (e.data === YtPlayerState.PLAYING && awaitingPlayRef.current) {
-                  playingRef.current = true
-                  onPlayingChangeRef.current?.(true)
                   const endAt = startSecRef.current + durationRef.current
-                  scheduleStopAt(endAt)
+                  waitForClipFrame(endAt)
                 }
 
                 if (e.data === YtPlayerState.ENDED) {
@@ -210,7 +297,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
     }, [])
 
     useEffect(() => {
-      if (readyRef.current) cueVideo()
+      if (readyRef.current) preloadVideo()
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [videoId, startSec])
 
@@ -219,6 +306,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
     return (
       <div className="player-mount">
         <div className="player-frame" ref={containerRef} />
+        <div className={`player-shield ${frameVisible ? 'is-hidden' : ''}`} aria-hidden />
         {status === 'loading' && (
           <p className="player-status">Loading player…</p>
         )}

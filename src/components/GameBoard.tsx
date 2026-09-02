@@ -58,6 +58,11 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
     playerRef.current?.play()
   }, [])
 
+  const prefetchNextMovie = useCallback(() => {
+    const next = deck.peek()
+    if (next) playerRef.current?.preloadNext(next.youtubeId, next.startSec)
+  }, [deck])
+
   function handleGuess(guess: string) {
     if (!round || !movie || round.finished) return
 
@@ -101,6 +106,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
     setSession({ movie: nextMovie, round: createRound(nextMovie) })
     setActiveLevel(0)
     setIsPlaying(false)
+    setPlayerReady(false)
     setPlayerError(null)
     setFeedback(null)
     setFocusToken((t) => t + 1)
@@ -187,6 +193,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
           round={round}
           movie={movie}
           onNext={handleNextMovie}
+          onPrefetchNext={prefetchNextMovie}
           animateIn={round.won}
         />
       )}

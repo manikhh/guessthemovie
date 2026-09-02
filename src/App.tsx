@@ -1,12 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Difficulty } from './types'
 import { ModeSelect } from './components/ModeSelect'
 import { GameBoard } from './components/GameBoard'
+import { loadYouTubeApi } from './lib/youtube'
 
 type Screen = { view: 'menu' } | { view: 'game'; difficulty: Difficulty }
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ view: 'menu' })
+
+  useEffect(() => {
+    loadYouTubeApi().catch(() => {})
+  }, [])
 
   return (
     <div className="app">

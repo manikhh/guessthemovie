@@ -455,6 +455,19 @@ input {
   inset: 0;
 }
 
+.player-shield {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: #000;
+  pointer-events: none;
+}
+
+.player-shield.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
 .player-frame {
   position: absolute;
   top: -18%;

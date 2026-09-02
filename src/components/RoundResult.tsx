@@ -5,11 +5,12 @@ interface RoundResultProps {
   round: RoundState
   movie: MovieClip
   onNext: () => void
+  onPrefetchNext?: () => void
   /** Win celebration just played — slide result in gently. */
   animateIn?: boolean
 }
 
-export function RoundResult({ round, movie, onNext, animateIn = false }: RoundResultProps) {
+export function RoundResult({ round, movie, onNext, onPrefetchNext, animateIn = false }: RoundResultProps) {
   const won = round.won
   const level = round.wonAtLevel ?? 0
   const points = scoreForLevel(level)
@@ -27,7 +28,14 @@ export function RoundResult({ round, movie, onNext, animateIn = false }: RoundRe
         </div>
 
         <div className="result-actions">
-          <button type="button" className="btn btn-primary btn-lg" onClick={onNext} autoFocus>
+          <button
+            type="button"
+            className="btn btn-primary btn-lg"
+            onClick={onNext}
+            onMouseEnter={onPrefetchNext}
+            onFocus={onPrefetchNext}
+            autoFocus
+          >
             Next movie
           </button>
           <a
@@ -51,7 +59,14 @@ export function RoundResult({ round, movie, onNext, animateIn = false }: RoundRe
       <p className="result-detail">No points this round</p>
 
       <div className="result-actions">
-        <button type="button" className="btn btn-primary btn-lg" onClick={onNext} autoFocus>
+        <button
+          type="button"
+          className="btn btn-primary btn-lg"
+          onClick={onNext}
+          onMouseEnter={onPrefetchNext}
+          onFocus={onPrefetchNext}
+          autoFocus
+        >
           Next movie
         </button>
         <a
