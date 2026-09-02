@@ -1,9 +1,11 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import type { Difficulty, MovieClip, RoundState, SessionStats } from '../types'
+import type { Difficulty, MovieClip, RoundAction, RoundState, SessionStats } from '../types'
 import { Deck } from '../lib/deck'
 import { DIFFICULTY_LABELS } from '../lib/difficulty'
 import { checkGuess } from '../lib/guess'
+import { submitRoundScore } from '../lib/auth'
+import { useAuth } from '../hooks/useAuth'
 import {
   applyGuess,
   applyRoundToStats,
@@ -16,6 +18,7 @@ import {
   MAX_LEVELS,
   saveBest,
   scoreForLevel,
+  scoreRound,
   unlockNextLevel,
 } from '../lib/game'
 import { YouTubePlayer, type YouTubePlayerHandle } from './YouTubePlayer'
@@ -57,11 +60,20 @@ function loadVolume(): number {
 }
 
 export function GameBoard({ difficulty, onExit }: GameBoardProps) {
+  const { user, loading, setUser } = useAuth()
   const deck = useMemo(() => new Deck(difficulty), [difficulty])
   const best = useRef(loadBest(difficulty))
 
   const [session, setSession] = useState(() => startSession(deck))
   const { movie, round } = session
+
+  const roundKeyRef = useRef(crypto.randomUUID())
+  const actionsRef = useRef<RoundAction[]>([])
+  const pendingScoreRef = useRef<{
+    roundKey: string
+    movieId: string
+    actions: RoundAction[]
+  } | null>(null)
 
   const [stats, setStats] = useState<SessionStats>(EMPTY_STATS)
   const [activeLevel, setActiveLevel] = useState(0)
@@ -103,23 +115,87 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
     if (next) playerRef.current?.preloadNext(next.youtubeId, next.startSec)
   }, [deck])
 
+  const submitScore = useCallback(
+    async (roundKey: string, movieId: string, actions: RoundAction[]) => {
+      try {
+        const { points } = await submitRoundScore({
+          roundKey,
+          movieId,
+          difficulty,
+          actions,
+        })
+        setUser((prev) => (prev ? { ...prev, points } : prev))
+      } catch {
+        /* offline or auth expired — local run score still updates */
+      }
+    },
+    [difficulty, setUser],
+  )
+
+  const persistRoundScore = useCallback(
+    (actions: RoundAction[], currentMovie: MovieClip) => {
+      const payload = {
+        roundKey: roundKeyRef.current,
+        movieId: currentMovie.id,
+        actions: [...actions],
+      }
+
+      if (loading) {
+        pendingScoreRef.current = payload
+        return
+      }
+
+      if (!user) {
+        pendingScoreRef.current = null
+        return
+      }
+
+      pendingScoreRef.current = null
+      void submitScore(payload.roundKey, payload.movieId, payload.actions)
+    },
+    [loading, submitScore, user],
+  )
+
+  useEffect(() => {
+    if (loading) return
+
+    if (!user) {
+      pendingScoreRef.current = null
+      return
+    }
+
+    const pending = pendingScoreRef.current
+    if (!pending) return
+
+    pendingScoreRef.current = null
+    void submitScore(pending.roundKey, pending.movieId, pending.actions)
+  }, [loading, submitScore, user])
+
+  function finishRound(next: RoundState, currentMovie: MovieClip) {
+    const updated = applyRoundToStats(stats, next)
+    setStats(updated)
+    saveBest(difficulty, updated.score)
+    setFeedback(null)
+    persistRoundScore(actionsRef.current, currentMovie)
+    if (next.won) setCelebrating(true)
+  }
+
   function handleGuess(guess: string) {
     if (!round || !movie || round.finished) return
+
+    const level = round.unlockedLevel
+    actionsRef.current.push({ type: 'guess', text: guess, level })
 
     const correct = checkGuess(guess, movie)
     const next = applyGuess(round, guess, correct)
     setSession((s) => ({ ...s, round: next }))
 
     if (next.finished) {
-      const updated = applyRoundToStats(stats, next)
-      setStats(updated)
-      saveBest(difficulty, updated.score)
-      setFeedback(null)
-      if (next.won) setCelebrating(true)
+      finishRound(next, movie)
       return
     }
 
-    setFeedback(`[WRONG] "${guess}"`)
+    setFeedback(`[-1] "${guess}"`)
     setShakeToken((t) => t + 1)
     window.setTimeout(() => setFeedback(null), 1800)
   }
@@ -128,22 +204,24 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
     if (!round || round.finished) return
     const next = unlockNextLevel(round)
     if (next === round) return
+    actionsRef.current.push({ type: 'unlock' })
     setSession((s) => ({ ...s, round: next }))
     play(next.unlockedLevel)
   }
 
   function handleGiveUp() {
-    if (!round || round.finished) return
+    if (!round || round.finished || !movie) return
+    actionsRef.current.push({ type: 'giveup', level: round.unlockedLevel })
     const next = giveUp(round)
     setSession((s) => ({ ...s, round: next }))
-    const updated = applyRoundToStats(stats, next)
-    setStats(updated)
-    saveBest(difficulty, updated.score)
+    finishRound(next, movie)
   }
 
   function handleNextMovie() {
     const nextMovie = deck.next()
     if (!nextMovie) return
+    roundKeyRef.current = crypto.randomUUID()
+    actionsRef.current = []
     setSession({ movie: nextMovie, round: createRound(nextMovie) })
     setActiveLevel(0)
     setIsPlaying(false)
@@ -177,7 +255,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
         <button type="button" className="btn-back" onClick={onExit} aria-label="Back to modes">
           <ChevronLeft size={20} strokeWidth={1.5} absoluteStrokeWidth />
         </button>
-        <StatsBar stats={stats} best={best.current} />
+        <StatsBar stats={stats} best={best.current} totalPoints={user?.points ?? null} />
         <span className={`chip chip-${difficulty}`}>{DIFFICULTY_LABELS[difficulty]}</span>
       </header>
 
@@ -226,7 +304,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
       <AnimatePresence>
         {celebrating && round.won && (
           <WinCelebration
-            points={scoreForLevel(round.wonAtLevel ?? 0)}
+            points={scoreRound(round)}
             clipLevel={round.wonAtLevel ?? 0}
             onDone={() => setCelebrating(false)}
           />

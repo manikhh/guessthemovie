@@ -1,5 +1,5 @@
 import type { MovieClip, RoundState } from '../types'
-import { CLIP_DURATIONS, formatDuration, scoreForLevel } from '../lib/game'
+import { CLIP_DURATIONS, formatDuration, scoreRound } from '../lib/game'
 import { ExternalLink, SkipForward } from './icons'
 
 interface RoundResultProps {
@@ -9,21 +9,26 @@ interface RoundResultProps {
   onPrefetchNext?: () => void
 }
 
+function formatPoints(delta: number): string {
+  if (delta > 0) return `+${delta}`
+  return String(delta)
+}
+
 export function RoundResult({ round, movie, onNext, onPrefetchNext }: RoundResultProps) {
   const won = round.won
   const level = round.wonAtLevel ?? 0
-  const points = scoreForLevel(level)
+  const netPoints = scoreRound(round)
 
   return (
     <section className={`result ${won ? 'is-won' : 'is-lost'}`}>
       <p className="result-verdict">{won ? '[CORRECT]' : '[OUT OF GUESSES]'}</p>
-      {won && <p className="result-prize">+{points}</p>}
+      <p className={`result-prize ${netPoints < 0 ? 'is-negative' : ''}`}>{formatPoints(netPoints)}</p>
       <h2 className="result-title">{movie.title}</h2>
       <p className="result-year">{movie.year}</p>
       <p className="result-detail">
         {won
-          ? `From a ${formatDuration(CLIP_DURATIONS[level]!)} clip`
-          : 'No points this round'}
+          ? `From a ${formatDuration(CLIP_DURATIONS[level]!)} clip · -1 per wrong guess`
+          : `${round.guesses.length} wrong guess${round.guesses.length === 1 ? '' : 'es'} · -1 each`}
       </p>
 
       <div className="result-actions">

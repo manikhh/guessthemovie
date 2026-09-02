@@ -16,6 +16,11 @@ export interface MovieClip {
 
 export type GuessResult = 'correct' | 'wrong' | 'skip'
 
+export type RoundAction =
+  | { type: 'guess'; text: string; level: number }
+  | { type: 'unlock' }
+  | { type: 'giveup'; level: number }
+
 export interface RoundState {
   movieId: string
   difficulty: Difficulty

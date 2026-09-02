@@ -61,10 +61,20 @@ export const EMPTY_STATS: SessionStats = {
   solved: 0,
 }
 
+/** Net points for a finished round: +level bonus on win, -1 per wrong guess. */
+export function scoreRound(round: RoundState): number {
+  if (round.won) {
+    const wrongGuesses = round.guesses.length - 1
+    return scoreForLevel(round.wonAtLevel ?? 0) - wrongGuesses
+  }
+
+  return -round.guesses.length
+}
+
 export function applyRoundToStats(stats: SessionStats, round: RoundState): SessionStats {
   if (!round.finished) return stats
 
-  const gained = round.won ? scoreForLevel(round.wonAtLevel ?? 0) : 0
+  const gained = scoreRound(round)
   const streak = round.won ? stats.streak + 1 : 0
 
   return {

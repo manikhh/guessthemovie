@@ -1,4 +1,5 @@
 import { FactoryMark } from '../components/FactoryMark'
+import { AuthBar } from '../components/AuthBar'
 import { ModeSelect } from '../components/ModeSelect'
 
 export function HomePage() {
@@ -14,6 +15,7 @@ export function HomePage() {
           </div>
         </div>
         <p className="masthead-sub">One frame. One guess. Name the film.</p>
+        <AuthBar />
       </header>
 
       <main className="main">

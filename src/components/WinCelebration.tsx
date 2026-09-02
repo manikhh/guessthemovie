@@ -83,8 +83,7 @@ export function WinCelebration({ points, clipLevel, onDone }: WinCelebrationProp
       >
         <p className="win-label">[Correct]</p>
         <p className="win-points">
-          <span className="win-points-plus">+</span>
-          <span className="win-points-num">{points}</span>
+          <span className="win-points-num">{points > 0 ? `+${points}` : points}</span>
         </p>
         <p className="win-points-sub">points</p>
         <p className="win-clip-note">from {formatDuration(CLIP_DURATIONS[clipLevel]!)} clip</p>
