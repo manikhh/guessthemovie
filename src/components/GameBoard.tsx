@@ -44,6 +44,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
   const [activeLevel, setActiveLevel] = useState(0)
   const playerRef = useRef<YouTubePlayerHandle>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [playerReady, setPlayerReady] = useState(false)
   const [playerError, setPlayerError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [focusToken, setFocusToken] = useState(0)
@@ -96,6 +97,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
     setSession({ movie: nextMovie, round: createRound(nextMovie) })
     setActiveLevel(0)
     setIsPlaying(false)
+    setPlayerReady(false)
     setPlayerError(null)
     setFeedback(null)
     setFocusToken((t) => t + 1)
@@ -135,6 +137,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
             startSec={movie.startSec}
             durationSec={clipLength}
             onPlayingChange={setIsPlaying}
+            onReadyChange={setPlayerReady}
             onErrorChange={setPlayerError}
           />
         </div>
@@ -149,12 +152,17 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
               type="button"
               className="screen-play"
               onClick={() => play(activeLevel)}
+              disabled={!playerReady && !playerError}
             >
               <span className="screen-play-icon" aria-hidden>
                 ▶
               </span>
               <span className="screen-play-label">
-                {playerError ?? `Play ${formatDuration(clipLength)}`}
+                {playerError
+                  ? playerError
+                  : playerReady
+                    ? `Play ${formatDuration(clipLength)}`
+                    : 'Loading player…'}
               </span>
             </button>
           )}
