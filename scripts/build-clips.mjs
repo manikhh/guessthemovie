@@ -190,35 +190,48 @@ function scoreCandidate(cand, movie) {
   return score
 }
 
+const EMBED_BLOCKED = [
+  'playback on other websites has been disabled',
+  'video unavailable',
+  'this video is private',
+  'embedding disabled',
+]
+
 async function verifyEmbeddable(videoId) {
+  const embedRes = await politeFetch(`https://www.youtube.com/embed/${videoId}`, `embed ${videoId}`, {
+    retries: 1,
+  })
+  if (!embedRes.ok) return { ok: false, reason: `embed ${embedRes.status}` }
+  const embedHtml = (await embedRes.text()).toLowerCase()
+  if (EMBED_BLOCKED.some((msg) => embedHtml.includes(msg))) {
+    return { ok: false, reason: 'embed unavailable' }
+  }
+
   const pageRes = await politeFetch(`https://www.youtube.com/watch?v=${videoId}`, `watch ${videoId}`, {
     retries: 1,
   })
   if (!pageRes.ok) return { ok: false, reason: `watch ${pageRes.status}` }
   const html = await pageRes.text()
 
-  if (html.includes('consent.youtube.com') && html.length < 80_000) {
-    return { ok: false, reason: 'consent page' }
-  }
-
-  const status = html.match(/"playabilityStatus":\{"status":"(\w+)"/)?.[1]
-  if (status && status !== 'OK') {
-    return { ok: false, reason: `status ${status}` }
-  }
-
   if (/"playableInEmbed":false/.test(html)) {
     return { ok: false, reason: 'embed blocked' }
   }
+
+  const status = html.match(/"playabilityStatus":\{"status":"(\w+)"/)?.[1]
+  if (status === 'UNPLAYABLE' || status === 'ERROR') {
+    return { ok: false, reason: `status ${status}` }
+  }
+  // LOGIN_REQUIRED on server fetch is common for datacenter IPs; embed page already passed.
 
   const lengthMatch = html.match(/"lengthSeconds":"(\d+)"/)
   if (!lengthMatch) {
     return { ok: false, reason: 'no duration' }
   }
 
-  return {
-    ok: true,
-    lengthSec: Number(lengthMatch[1]),
-  }
+  const lengthSec = Number(lengthMatch[1])
+  if (lengthSec < 30) return { ok: false, reason: 'too short' }
+
+  return { ok: true, lengthSec }
 }
 
 function searchQueries(movie) {
