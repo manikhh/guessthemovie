@@ -11,6 +11,7 @@ import {
   createRound,
   EMPTY_STATS,
   formatDuration,
+  giveUp,
   loadBest,
   MAX_LEVELS,
   saveBest,
@@ -57,6 +58,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
   const [playerError, setPlayerError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [focusToken, setFocusToken] = useState(0)
+  const [shakeToken, setShakeToken] = useState(0)
   const [celebrating, setCelebrating] = useState(false)
 
   const play = useCallback((level: number) => {
@@ -95,6 +97,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
     }
 
     setFeedback(`[WRONG] "${guess}"`)
+    setShakeToken((t) => t + 1)
     window.setTimeout(() => setFeedback(null), 1800)
   }
 
@@ -104,6 +107,15 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
     if (next === round) return
     setSession((s) => ({ ...s, round: next }))
     play(next.unlockedLevel)
+  }
+
+  function handleGiveUp() {
+    if (!round || round.finished) return
+    const next = giveUp(round)
+    setSession((s) => ({ ...s, round: next }))
+    const updated = applyRoundToStats(stats, next)
+    setStats(updated)
+    saveBest(difficulty, updated.score)
   }
 
   function handleNextMovie() {
@@ -116,6 +128,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
     setPlayerError(null)
     setFeedback(null)
     setFocusToken((t) => t + 1)
+    setShakeToken(0)
     setCelebrating(false)
   }
 
@@ -260,6 +273,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
                 guessesLeft={guessesLeft}
                 onSubmit={handleGuess}
                 onMore={handleShowMore}
+                onGiveUp={handleGiveUp}
                 canShowMore={canShowMore}
                 moreLabel={
                   canShowMore
@@ -267,6 +281,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
                     : 'Max clip'
                 }
                 focusToken={focusToken}
+                shakeToken={shakeToken}
               />
 
               <motion.p

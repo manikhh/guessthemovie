@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { motion, useAnimation } from 'framer-motion'
 import { Expand, MorphIcon, Send } from './icons'
 
 interface GuessInputProps {
@@ -6,10 +7,13 @@ interface GuessInputProps {
   guessesLeft: number
   onSubmit: (guess: string) => void
   onMore: () => void
+  onGiveUp: () => void
   canShowMore: boolean
   moreLabel: string
   /** Bump to refocus the field, e.g. when a new round starts. */
   focusToken: number
+  /** Bump to shake the field after a wrong guess. */
+  shakeToken: number
 }
 
 export function GuessInput({
@@ -17,18 +21,30 @@ export function GuessInput({
   guessesLeft,
   onSubmit,
   onMore,
+  onGiveUp,
   canShowMore,
   moreLabel,
   focusToken,
+  shakeToken,
 }: GuessInputProps) {
   const [value, setValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const controls = useAnimation()
   const hasInput = value.trim().length > 0
+  const atMaxClip = !canShowMore
 
   useEffect(() => {
     setValue('')
     inputRef.current?.focus()
   }, [focusToken])
+
+  useEffect(() => {
+    if (shakeToken === 0) return
+    void controls.start({
+      x: [0, -8, 8, -6, 6, -3, 3, 0],
+      transition: { duration: 0.4, ease: 'easeOut' },
+    })
+  }, [shakeToken, controls])
 
   function submitGuess() {
     const trimmed = value.trim()
@@ -47,7 +63,7 @@ export function GuessInput({
   }
 
   return (
-    <form className="guess-form" onSubmit={handleFormSubmit}>
+    <motion.form className="guess-form" onSubmit={handleFormSubmit} animate={controls}>
       <input
         ref={inputRef}
         type="text"
@@ -77,9 +93,16 @@ export function GuessInput({
         />
         {hasInput ? 'Guess' : moreLabel}
       </button>
-      <span className="guess-left" aria-live="polite">
-        {guessesLeft} left
-      </span>
-    </form>
+      <div className="guess-meta">
+        <span className="guess-left" aria-live="polite">
+          {guessesLeft} left
+        </span>
+        {atMaxClip && !disabled && (
+          <button type="button" className="btn-give-up" onClick={onGiveUp}>
+            Give up
+          </button>
+        )}
+      </div>
+    </motion.form>
   )
 }
