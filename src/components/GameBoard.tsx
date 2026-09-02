@@ -17,7 +17,7 @@ import {
   scoreForLevel,
   unlockNextLevel,
 } from '../lib/game'
-import { YouTubePlayer } from './YouTubePlayer'
+import { YouTubePlayer, type YouTubePlayerHandle } from './YouTubePlayer'
 import { ClipTimeline } from './ClipTimeline'
 import { GuessInput } from './GuessInput'
 import { RoundResult } from './RoundResult'
@@ -42,7 +42,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
 
   const [stats, setStats] = useState<SessionStats>(EMPTY_STATS)
   const [activeLevel, setActiveLevel] = useState(0)
-  const [playToken, setPlayToken] = useState(0)
+  const playerRef = useRef<YouTubePlayerHandle>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [playerError, setPlayerError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
@@ -50,7 +50,8 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
 
   const play = useCallback((level: number) => {
     setActiveLevel(level)
-    setPlayToken((t) => t + 1)
+    setPlayerError(null)
+    playerRef.current?.play()
   }, [])
 
   function handleGuess(guess: string) {
@@ -129,10 +130,10 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
       <div className="screen">
         <div className="screen-video">
           <YouTubePlayer
+            ref={playerRef}
             videoId={movie.youtubeId}
             startSec={movie.startSec}
             durationSec={clipLength}
-            playToken={playToken}
             onPlayingChange={setIsPlaying}
             onErrorChange={setPlayerError}
           />

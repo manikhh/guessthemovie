@@ -1,18 +1,22 @@
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+
+export interface YouTubePlayerHandle {
+  /** Must be called synchronously inside a user click handler. */
+  play: () => void
+}
 
 interface YouTubePlayerProps {
   videoId: string
   startSec: number
   durationSec: number
-  playToken: number
   onPlayingChange?: (playing: boolean) => void
-  onReadyChange?: (ready: boolean) => void
   onErrorChange?: (error: string | null) => void
 }
 
 function buildEmbedUrl(videoId: string, startSec: number): string {
+  const start = Math.floor(startSec)
   const params = new URLSearchParams({
-    start: String(Math.floor(startSec)),
+    start: String(start),
     autoplay: '1',
     controls: '0',
     disablekb: '1',
@@ -21,106 +25,109 @@ function buildEmbedUrl(videoId: string, startSec: number): string {
     modestbranding: '1',
     playsinline: '1',
     rel: '0',
+    enablejsapi: '0',
     origin: window.location.origin,
   })
-  // nocookie domain — no iframe_api script, works through most ad blockers.
-  return `https://www.youtube-nocookie.com/embed/${videoId}?${params}`
+  return `https://www.youtube.com/embed/${videoId}?${params}`
 }
 
-/**
- * Plays a short clip via a plain YouTube embed iframe.
- * Does NOT load youtube.com/iframe_api (commonly blocked by ad blockers).
- */
-export function YouTubePlayer({
-  videoId,
-  startSec,
-  durationSec,
-  playToken,
-  onPlayingChange,
-  onReadyChange,
-  onErrorChange,
-}: YouTubePlayerProps) {
-  const [activeToken, setActiveToken] = useState(0)
-  const timerRef = useRef<number | null>(null)
-  const loadTimerRef = useRef<number | null>(null)
+export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>(
+  function YouTubePlayer(
+    { videoId, startSec, durationSec, onPlayingChange, onErrorChange },
+    ref,
+  ) {
+    const iframeRef = useRef<HTMLIFrameElement>(null)
+    const clipTimerRef = useRef<number | null>(null)
+    const loadTimerRef = useRef<number | null>(null)
+    const playingRef = useRef(false)
 
-  const durationRef = useRef(durationSec)
-  const onPlayingChangeRef = useRef(onPlayingChange)
-  const onErrorChangeRef = useRef(onErrorChange)
-  durationRef.current = durationSec
-  onPlayingChangeRef.current = onPlayingChange
-  onErrorChangeRef.current = onErrorChange
+    const videoIdRef = useRef(videoId)
+    const startSecRef = useRef(startSec)
+    const durationRef = useRef(durationSec)
+    const onPlayingChangeRef = useRef(onPlayingChange)
+    const onErrorChangeRef = useRef(onErrorChange)
+    videoIdRef.current = videoId
+    startSecRef.current = startSec
+    durationRef.current = durationSec
+    onPlayingChangeRef.current = onPlayingChange
+    onErrorChangeRef.current = onErrorChange
 
-  function clearTimers() {
-    if (timerRef.current !== null) {
-      window.clearTimeout(timerRef.current)
-      timerRef.current = null
+    function clearTimers() {
+      if (clipTimerRef.current !== null) {
+        window.clearTimeout(clipTimerRef.current)
+        clipTimerRef.current = null
+      }
+      if (loadTimerRef.current !== null) {
+        window.clearTimeout(loadTimerRef.current)
+        loadTimerRef.current = null
+      }
     }
-    if (loadTimerRef.current !== null) {
-      window.clearTimeout(loadTimerRef.current)
-      loadTimerRef.current = null
-    }
-  }
 
-  function stopClip() {
-    clearTimers()
-    setActiveToken(0)
-    onPlayingChangeRef.current?.(false)
-  }
-
-  // Ready immediately — no external script required.
-  useEffect(() => {
-    onReadyChange?.(true)
-    onErrorChangeRef.current?.(null)
-    return () => {
+    function stopClip() {
       clearTimers()
-      onReadyChange?.(false)
+      playingRef.current = false
+      const iframe = iframeRef.current
+      if (iframe) iframe.src = 'about:blank'
+      onPlayingChangeRef.current?.(false)
     }
-  }, [onReadyChange])
 
-  // Start a new clip whenever playToken increments.
-  useEffect(() => {
-    if (playToken <= 0) return
-    clearTimers()
-    onErrorChangeRef.current?.(null)
-    setActiveToken(playToken)
-
-    // If the iframe never loads (fully blocked embed), surface an error.
-    loadTimerRef.current = window.setTimeout(() => {
-      onErrorChangeRef.current?.(
-        'Video blocked — disable your ad blocker for this site, or try another browser.',
-      )
-      stopClip()
-    }, 12_000)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playToken])
-
-  function handleIframeLoad() {
-    if (loadTimerRef.current !== null) {
-      window.clearTimeout(loadTimerRef.current)
-      loadTimerRef.current = null
+    function startClipTimer() {
+      clearTimers()
+      // Give the player a moment to actually start after the shell loads.
+      const delayMs = 150
+      const playMs = Math.max(durationRef.current * 1000, 400)
+      clipTimerRef.current = window.setTimeout(stopClip, delayMs + playMs)
     }
-    onErrorChangeRef.current?.(null)
-    onPlayingChangeRef.current?.(true)
 
-    timerRef.current = window.setTimeout(stopClip, durationRef.current * 1000)
-  }
+    useImperativeHandle(ref, () => ({
+      play() {
+        const iframe = iframeRef.current
+        if (!iframe) return
 
-  const showIframe = activeToken > 0
+        clearTimers()
+        onErrorChangeRef.current?.(null)
 
-  return (
-    <div className="player-mount">
-      {showIframe && (
+        // Setting src here (inside the click handler) keeps autoplay-with-sound allowed.
+        const url = `${buildEmbedUrl(videoIdRef.current, startSecRef.current)}&_=${Date.now()}`
+        iframe.src = url
+        playingRef.current = true
+        onPlayingChangeRef.current?.(true)
+
+        loadTimerRef.current = window.setTimeout(() => {
+          if (!playingRef.current) return
+          onErrorChangeRef.current?.(
+            'Video blocked — allow YouTube embeds or disable your ad blocker.',
+          )
+          stopClip()
+        }, 10_000)
+      },
+    }))
+
+    function handleIframeLoad() {
+      if (!playingRef.current) return
+
+      if (loadTimerRef.current !== null) {
+        window.clearTimeout(loadTimerRef.current)
+        loadTimerRef.current = null
+      }
+      onErrorChangeRef.current?.(null)
+      startClipTimer()
+    }
+
+    useEffect(() => () => clearTimers(), [])
+
+    return (
+      <div className="player-mount">
         <iframe
-          key={`${videoId}-${startSec}-${activeToken}`}
+          ref={iframeRef}
           className="player-iframe"
-          src={buildEmbedUrl(videoId, startSec)}
+          src="about:blank"
           title="Movie clip"
           allow="autoplay; encrypted-media; picture-in-picture"
           allowFullScreen={false}
           onLoad={handleIframeLoad}
         />
-      )}
-    </div>
-  )
-}
+      </div>
+    )
+  },
+)
