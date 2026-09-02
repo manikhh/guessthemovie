@@ -97,10 +97,11 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
     setSession({ movie: nextMovie, round: createRound(nextMovie) })
     setActiveLevel(0)
     setIsPlaying(false)
-    setPlayerReady(false)
     setPlayerError(null)
     setFeedback(null)
     setFocusToken((t) => t + 1)
+    // Do NOT reset playerReady — the YouTube player stays mounted and is
+    // already ready; only the cued video changes via the videoId effect.
   }
 
   if (!movie || !round) {
