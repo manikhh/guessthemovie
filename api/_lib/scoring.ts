@@ -1,22 +1,15 @@
-import type { RoundAction, RoundState } from '../../src/types'
+import {
+  MAX_LEVELS,
+  SKIP_PENALTY,
+  WRONG_GUESS_PENALTY,
+  scoreForLevel,
+  scoreRound,
+} from '../../src/lib/game.js'
+import type { RoundAction } from '../../src/types'
 
-export const MAX_LEVELS = 6
+export { MAX_LEVELS, SKIP_PENALTY, WRONG_GUESS_PENALTY, scoreForLevel, scoreRound }
+
 const MAX_GUESS_LEN = 120
-
-export function scoreForLevel(level: number): number {
-  return MAX_LEVELS - level
-}
-
-/** Net points for a finished round: +level bonus on win, -1 per wrong guess. */
-export function scoreRound(round: RoundState): number {
-  if (round.won) {
-    const wrongGuesses = round.guesses.length - 1
-    return scoreForLevel(round.wonAtLevel ?? 0) - wrongGuesses
-  }
-
-  const skipPenalty = round.guesses.length < MAX_LEVELS ? 1 : 0
-  return -round.guesses.length - skipPenalty
-}
 
 function isValidLevel(level: number): boolean {
   return Number.isInteger(level) && level >= 0 && level < MAX_LEVELS
@@ -78,7 +71,7 @@ export function computePointsFromActions(
 
     if (action.type === 'giveup') {
       if (action.level !== level) return null
-      return total - 1
+      return total - SKIP_PENALTY
     }
 
     if (action.type !== 'guess') return null
@@ -93,7 +86,7 @@ export function computePointsFromActions(
       return total
     }
 
-    total -= 1
+    total -= WRONG_GUESS_PENALTY
   }
 
   if (guessCount >= MAX_LEVELS) return total

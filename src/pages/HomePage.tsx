@@ -1,6 +1,7 @@
 import { FactoryMark } from '../components/FactoryMark'
 import { AuthBar } from '../components/AuthBar'
 import { ModeSelect } from '../components/ModeSelect'
+import { SupportStrip } from '../components/SupportStrip'
 
 export function HomePage() {
   return (
@@ -23,6 +24,7 @@ export function HomePage() {
       </main>
 
       <footer className="site-footer">
+        <SupportStrip />
         <p className="watermark">by Chocolate Factory</p>
       </footer>
     </div>

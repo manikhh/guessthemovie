@@ -75,6 +75,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       sendJson(res, 409, { error: 'Finish the current round before continuing.' })
       return
     }
+    if (err instanceof Error && err.message === 'POOL_COMPLETE') {
+      sendJson(res, 410, { error: 'Mode cleared. No more films in this difficulty.' })
+      return
+    }
     if (err instanceof Error && err.message === 'CONCURRENT') {
       sendJson(res, 409, { error: 'Round updated elsewhere. Refresh and try again.' })
       return

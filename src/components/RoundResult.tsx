@@ -1,11 +1,20 @@
 import type { ClipReveal, PublicClip, RoundState } from '../types'
-import { CLIP_DURATIONS, formatDuration, MAX_LEVELS, scoreRound } from '../lib/game'
+import {
+  CLIP_DURATIONS,
+  formatDuration,
+  MAX_LEVELS,
+  SKIP_PENALTY,
+  WRONG_GUESS_PENALTY,
+  scoreRound,
+} from '../lib/game'
 import { ExternalLink, SkipForward } from './icons'
 
 interface RoundResultProps {
   round: RoundState
   movie: PublicClip & Partial<ClipReveal>
+  modeComplete?: boolean
   onNext: () => void
+  onDone?: () => void
   onPrefetchNext?: () => void
   loadingNext?: boolean
   scorePending?: boolean
@@ -21,7 +30,9 @@ function formatPoints(delta: number): string {
 export function RoundResult({
   round,
   movie,
+  modeComplete,
   onNext,
+  onDone,
   onPrefetchNext,
   loadingNext,
   scorePending,
@@ -43,16 +54,21 @@ export function RoundResult({
       <p className="result-year">{movie.year ?? ''}</p>
       <p className="result-detail">
         {won
-          ? `From a ${formatDuration(CLIP_DURATIONS[level]!)} clip · -1 per wrong guess`
+          ? `From a ${formatDuration(CLIP_DURATIONS[level]!)} clip · −${WRONG_GUESS_PENALTY} per wrong guess`
           : gaveUp
-            ? `Skip −1${round.guesses.length ? ` · ${round.guesses.length} wrong · -1 each` : ''}`
-            : `${round.guesses.length} wrong guess${round.guesses.length === 1 ? '' : 'es'} · -1 each`}
+            ? `Skip −${SKIP_PENALTY}${round.guesses.length ? ` · ${round.guesses.length} wrong · −${WRONG_GUESS_PENALTY} each` : ''}`
+            : `${round.guesses.length} wrong guess${round.guesses.length === 1 ? '' : 'es'} · −${WRONG_GUESS_PENALTY} each`}
       </p>
+      {modeComplete ? <p className="result-detail">Mode cleared — locked</p> : null}
 
       <div className="result-actions">
         {scoreError ? (
           <button type="button" className="btn btn-primary btn-lg" onClick={onRetryScore} autoFocus>
             Retry save
+          </button>
+        ) : modeComplete ? (
+          <button type="button" className="btn btn-primary btn-lg" onClick={onDone} autoFocus>
+            Back to modes
           </button>
         ) : (
           <button

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { ClipReveal, Difficulty, PublicClip, RoundAction, RoundState, SessionStats } from '../types'
 import { DIFFICULTY_LABELS } from '../lib/difficulty'
-import { fetchNextClip, submitPlayAction, submitRoundScore, type PlayView } from '../lib/auth'
+import { fetchNextClip, ModeCompleteError, submitPlayAction, submitRoundScore, type PlayView } from '../lib/auth'
 import { useAuth } from '../hooks/useAuth'
 import {
   applyRoundToStats,
@@ -80,6 +80,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
   const [shakeToken, setShakeToken] = useState(0)
   const [celebrating, setCelebrating] = useState(false)
   const [volume, setVolume] = useState(loadVolume)
+  const [modeComplete, setModeComplete] = useState(false)
 
   const statsRef = useRef(stats)
   statsRef.current = stats
@@ -166,10 +167,21 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
 
       try {
         const view = await fetchNextClip(difficulty, advance)
+        setModeComplete(view.watched >= view.poolSize && view.poolSize > 0)
         const nextRound = applyView(view, true)
         if (view.finished) finishRound(nextRound)
       } catch (err) {
-        setLoadError(err instanceof Error ? err.message : 'Could not load clip')
+        if (err instanceof ModeCompleteError) {
+          setModeComplete(true)
+          if (advance) {
+            setLoadingNext(false)
+            advancingRef.current = false
+            return
+          }
+          setLoadError('Mode cleared — locked')
+        } else {
+          setLoadError(err instanceof Error ? err.message : 'Could not load clip')
+        }
       } finally {
         setLoadingClip(false)
         setLoadingNext(false)
@@ -262,6 +274,10 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
   }
 
   function queueNext() {
+    if (modeComplete || poolProgress.watched >= poolProgress.poolSize) {
+      onExit()
+      return
+    }
     wantNextRef.current = true
     if (scoreStartedKeyRef.current === roundKeyRef.current) {
       void advanceIfQueued()
@@ -316,9 +332,11 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
     return (
       <div className="loading">
         <p>{loadError ?? `[EMPTY] No clips for ${DIFFICULTY_LABELS[difficulty]}`}</p>
-        <button type="button" className="btn btn-primary" onClick={() => void loadClip(false)}>
-          Retry
-        </button>
+        {modeComplete || loadError === 'Mode cleared — locked' ? null : (
+          <button type="button" className="btn btn-primary" onClick={() => void loadClip(false)}>
+            Retry
+          </button>
+        )}
         <button type="button" className="btn btn-outline" onClick={onExit}>
           Back
         </button>
@@ -415,7 +433,9 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
             <RoundResult
               round={round}
               movie={movie}
+              modeComplete={modeComplete || poolProgress.watched >= poolProgress.poolSize}
               onNext={handleNextMovie}
+              onDone={onExit}
               onPrefetchNext={prefetchNextMovie}
               loadingNext={loadingNext}
               scorePending={scorePending}

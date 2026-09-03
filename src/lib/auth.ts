@@ -43,6 +43,20 @@ export type PlayView = {
   reveal: ClipReveal | null
 }
 
+export type ModeProgress = {
+  difficulty: Difficulty
+  watched: number
+  poolSize: number
+  completed: boolean
+}
+
+export class ModeCompleteError extends Error {
+  constructor(message = 'Mode cleared') {
+    super(message)
+    this.name = 'ModeCompleteError'
+  }
+}
+
 type NextClipResponse = PlayView & {
   error?: string
 }
@@ -145,6 +159,10 @@ export async function fetchNextClip(difficulty: Difficulty, advance = false): Pr
     return fetchNextClip(difficulty, true)
   }
 
+  if (res.status === 410) {
+    throw new ModeCompleteError()
+  }
+
   const data = await parseJsonResponse<NextClipResponse>(res)
   if (!data.clip || !data.roundKey) {
     throw new Error('Could not load the next clip')
@@ -163,6 +181,13 @@ export async function fetchNextClip(difficulty: Difficulty, advance = false): Pr
     wonAtLevel: data.wonAtLevel ?? null,
     reveal: data.reveal ?? null,
   }
+}
+
+export async function fetchModesProgress(): Promise<ModeProgress[]> {
+  const res = await fetch('/api/play/progress', { credentials: 'include' })
+  if (res.status === 401) return []
+  const data = await parseJsonResponse<{ modes?: ModeProgress[]; error?: string }>(res)
+  return data.modes ?? []
 }
 
 export async function submitPlayAction(input: {

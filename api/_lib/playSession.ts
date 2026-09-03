@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb'
 import type { Difficulty, MovieClip, PublicClip, RoundAction } from '../../src/types.js'
-import { getClipsForDifficulty, toClipReveal, toPublicClip } from './clips.js'
+import { getClipsForDifficulty, randomStartSec, toClipReveal, toPublicClip } from './clips.js'
 import { getDb } from './db.js'
 import { checkGuess } from './guess.js'
 import { computePointsFromActions, MAX_LEVELS, validateRoundActions } from './scoring.js'
@@ -13,6 +13,8 @@ export type PlaySessionDoc = {
   activeMovieId: string | null
   activeRoundKey: string | null
   actions: RoundAction[]
+  /** Per-round trailer start; stays fixed while the player unlocks longer clips. */
+  startSec: number | null
   revision: number
   cycle: number
   updatedAt: Date
@@ -46,14 +48,15 @@ function shuffle<T>(items: T[]): T[] {
   return out
 }
 
-function pickNextMovieId(pool: MovieClip[], seen: Set<string>, avoidId?: string | null): string | null {
-  let available = pool.filter((clip) => !seen.has(clip.id))
-  if (available.length === 0) {
-    available = pool.filter((clip) => clip.id !== avoidId)
-    if (available.length === 0) available = pool
-  }
-
+function pickNextMovieId(pool: MovieClip[], seen: Set<string>): string | null {
+  const available = pool.filter((clip) => !seen.has(clip.id))
   return shuffle(available)[0]?.id ?? null
+}
+
+function poolFullySeen(pool: MovieClip[], seenMovieIds: string[]): boolean {
+  if (pool.length === 0) return true
+  const seen = new Set(seenMovieIds)
+  return pool.every((clip) => seen.has(clip.id))
 }
 
 function revisionFilter(revision: number | undefined) {
@@ -101,15 +104,16 @@ function toResult(
   clip: MovieClip,
   roundKey: string,
   session: PlaySessionDoc,
-  poolSize: number,
+  pool: MovieClip[],
 ): NextClipResult {
   const actions = session.actions ?? []
   const progress = deriveProgress(actions, clip)
+  const seen = new Set(session.seenMovieIds)
   return {
-    clip: toPublicClip(clip),
+    clip: toPublicClip(clip, session.startSec ?? clip.startSec),
     roundKey,
-    watched: session.seenMovieIds.length,
-    poolSize,
+    watched: pool.filter((item) => seen.has(item.id)).length,
+    poolSize: pool.length,
     cycle: session.cycle ?? 1,
     actions,
     ...progress,
@@ -141,7 +145,7 @@ export async function resolveNextClip(
 
       const clip = pool.find((item) => item.id === existing.activeMovieId)
       if (clip) {
-        return toResult(clip, existing.activeRoundKey, existing, pool.length)
+        return toResult(clip, existing.activeRoundKey, existing, pool)
       }
 
       await col.updateOne(
@@ -151,6 +155,7 @@ export async function resolveNextClip(
             activeMovieId: null,
             activeRoundKey: null,
             actions: [],
+            startSec: null,
             updatedAt: now,
           },
         },
@@ -169,24 +174,19 @@ export async function resolveNextClip(
     activeMovieId: null,
     activeRoundKey: null,
     actions: [],
+    startSec: null,
     revision: 0,
     cycle: 1,
     updatedAt: now,
   }
 
-  const seen = new Set(session.seenMovieIds)
-  let cycle = session.cycle ?? 1
-  const lastId = session.activeMovieId
-
-  let movieId = pickNextMovieId(pool, seen, lastId)
-  if (!movieId) return null
-
-  if (seen.has(movieId)) {
-    seen.clear()
-    cycle += 1
-    movieId = pickNextMovieId(pool, seen, lastId)
-    if (!movieId) return null
+  if (poolFullySeen(pool, session.seenMovieIds)) {
+    throw new Error('POOL_COMPLETE')
   }
+
+  const seen = new Set(session.seenMovieIds)
+  const movieId = pickNextMovieId(pool, seen)
+  if (!movieId) throw new Error('POOL_COMPLETE')
 
   seen.add(movieId)
   const roundKey = crypto.randomUUID()
@@ -200,8 +200,9 @@ export async function resolveNextClip(
     activeMovieId: movieId,
     activeRoundKey: roundKey,
     actions: [],
+    startSec: randomStartSec(clip.durationSec),
     revision,
-    cycle,
+    cycle: session.cycle ?? 1,
     updatedAt: now,
   }
 
@@ -220,7 +221,7 @@ export async function resolveNextClip(
     throw err
   }
 
-  return toResult(clip, roundKey, nextSession, pool.length)
+  return toResult(clip, roundKey, nextSession, pool)
 }
 
 export async function applyPlayAction(
@@ -246,7 +247,7 @@ export async function applyPlayAction(
   const current = session.actions ?? []
   const progress = deriveProgress(current, clip)
   if (progress.finished) {
-    return toResult(clip, roundKey, session, pool.length)
+    return toResult(clip, roundKey, session, pool)
   }
 
   let nextAction: RoundAction
@@ -291,7 +292,7 @@ export async function applyPlayAction(
   )
 
   if (!updated) throw new Error('CONCURRENT')
-  return toResult(clip, roundKey, updated, pool.length)
+  return toResult(clip, roundKey, updated, pool)
 }
 
 export async function getActiveRound(
@@ -326,8 +327,51 @@ export async function clearActiveRound(userId: string, difficulty: Difficulty): 
         activeMovieId: null,
         activeRoundKey: null,
         actions: [],
+        startSec: null,
         updatedAt: new Date(),
       },
     },
   )
+}
+
+export type ModeProgress = {
+  difficulty: Difficulty
+  watched: number
+  poolSize: number
+  completed: boolean
+}
+
+const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard']
+
+export async function getModesProgress(userId: string): Promise<ModeProgress[]> {
+  const db = await getDb()
+  const userObjectId = new ObjectId(userId)
+  const sessions = await db
+    .collection<PlaySessionDoc>('play_sessions')
+    .find({ userId: userObjectId })
+    .toArray()
+  const byDifficulty = new Map(sessions.map((s) => [s.difficulty, s]))
+
+  const out: ModeProgress[] = []
+  for (const difficulty of DIFFICULTIES) {
+    const pool = getClipsForDifficulty(difficulty)
+    const session = byDifficulty.get(difficulty)
+    const seenMovieIds = session?.seenMovieIds ?? []
+    const watched = pool.filter((clip) => seenMovieIds.includes(clip.id)).length
+    const allSeen = poolFullySeen(pool, seenMovieIds)
+
+    let completed = allSeen && pool.length > 0
+    if (completed && session?.activeMovieId && session.activeRoundKey) {
+      const scored = await hasScoredRound(userObjectId, session.activeRoundKey)
+      if (!scored) completed = false
+    }
+
+    out.push({
+      difficulty,
+      watched,
+      poolSize: pool.length,
+      completed,
+    })
+  }
+  return out
 }

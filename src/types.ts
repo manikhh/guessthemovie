@@ -21,7 +21,7 @@ export interface MovieClip {
   difficulty: Difficulty
   aliases: string[]
   youtubeId: string
-  /** Where in the trailer the clip starts. */
+  /** Fallback clip start; live rounds pick a random start on the server. */
   startSec: number
   /** Full trailer length, used to keep clips inside the video. */
   durationSec: number

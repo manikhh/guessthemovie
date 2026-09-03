@@ -9,9 +9,17 @@ export function clipDurationForLevel(level: number): number {
   return CLIP_DURATIONS[Math.min(level, CLIP_DURATIONS.length - 1)] ?? 5
 }
 
-/** Shorter clip = more points. Level 0 is worth 6, level 5 is worth 1. */
+/**
+ * Rewards follow how much the clip actually gives away, not even steps.
+ * 0.2s / 0.5s are both flashes (jackpot band). 1s is the readability cliff.
+ * 2s+ is salvage — 3s vs 5s barely changes what you know.
+ */
+export const LEVEL_SCORES = [30, 22, 15, 12, 11, 10] as const
+export const WRONG_GUESS_PENALTY = 8
+export const SKIP_PENALTY = 20
+
 export function scoreForLevel(level: number): number {
-  return MAX_LEVELS - level
+  return LEVEL_SCORES[Math.min(Math.max(level, 0), LEVEL_SCORES.length - 1)] ?? 10
 }
 
 export function formatDuration(sec: number): string {
@@ -81,15 +89,15 @@ export const EMPTY_STATS: SessionStats = {
   solved: 0,
 }
 
-/** Net points for a finished round: +level bonus on win, -1 per wrong guess. */
+/** Net points for a finished round: +clip reward on win, minus wrong/skip penalties. */
 export function scoreRound(round: RoundState): number {
   if (round.won) {
     const wrongGuesses = round.guesses.length - 1
-    return scoreForLevel(round.wonAtLevel ?? 0) - wrongGuesses
+    return scoreForLevel(round.wonAtLevel ?? 0) - wrongGuesses * WRONG_GUESS_PENALTY
   }
 
-  const skipPenalty = round.guesses.length < MAX_LEVELS ? 1 : 0
-  return -round.guesses.length - skipPenalty
+  const skipPenalty = round.guesses.length < MAX_LEVELS ? SKIP_PENALTY : 0
+  return -round.guesses.length * WRONG_GUESS_PENALTY - skipPenalty
 }
 
 export function applyRoundToStats(stats: SessionStats, round: RoundState): SessionStats {
