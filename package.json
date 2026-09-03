@@ -9,7 +9,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "fetch-clips": "tsx scripts/fetch-clips.ts",
-    "build-clips": "node scripts/build-clips.mjs",
+    "build-clips": "node scripts/build-clips-tmdb.mjs",
+    "build-clips:youtube": "node scripts/build-clips.mjs",
     "validate-clips": "tsx scripts/validate-clips.ts",
     "fetch-candidates": "node scripts/fetch-iran-candidates.mjs"
   },

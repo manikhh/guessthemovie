@@ -14,7 +14,7 @@ export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
 }
 
 export const DIFFICULTY_HINTS: Record<Difficulty, string> = {
-  easy: 'Blockbusters every Iranian has seen',
-  medium: 'Well-known films and modern classics',
+  easy: 'Blockbusters everyone has seen',
+  medium: 'Modern classics and cult hits',
   hard: 'Arthouse, festival and deep cuts',
 }

@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose'
-import type { ApiRequest, ApiResponse } from './http'
+import type { ApiRequest, ApiResponse } from './http.js'
 
 const COOKIE_NAME = 'session'
 const MAX_AGE_SEC = 60 * 60 * 24 * 7

@@ -1,7 +1,12 @@
-import type { Difficulty, MovieClip } from '../../src/types'
-import clipsData from '../../src/data/clips.json'
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import type { Difficulty, MovieClip } from '../../src/types.js'
 
-export const CLIPS = clipsData as MovieClip[]
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const clipsPath = resolve(__dirname, '../../src/data/clips.json')
+
+export const CLIPS = JSON.parse(readFileSync(clipsPath, 'utf8')) as MovieClip[]
 
 export function findClip(movieId: string, difficulty: Difficulty): MovieClip | null {
   const clip = CLIPS.find((item) => item.id === movieId)

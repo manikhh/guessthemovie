@@ -1,6 +1,6 @@
-import { ensureIndexes } from '../_lib/db'
-import { methodNotAllowed, sendJson, type ApiRequest, type ApiResponse } from '../_lib/http'
-import { getLeaderboard } from '../_lib/users'
+import { ensureIndexes } from './_lib/db.js'
+import { methodNotAllowed, sendJson, type ApiRequest, type ApiResponse } from './_lib/http.js'
+import { getLeaderboard } from './_lib/users.js'
 
 let indexesReady: Promise<void> | null = null
 

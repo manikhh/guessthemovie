@@ -28,8 +28,14 @@ type LeaderboardResponse = {
   error?: string
 }
 
-async function parseAuthResponse(res: Response): Promise<AuthResponse> {
-  const data = (await res.json()) as AuthResponse
+async function parseJsonResponse<T extends { error?: string }>(res: Response): Promise<T> {
+  const text = await res.text()
+  let data: T
+  try {
+    data = JSON.parse(text) as T
+  } catch {
+    throw new Error(text.trim() || 'Server error')
+  }
   if (!res.ok) {
     throw new Error(data.error ?? 'Request failed')
   }
@@ -39,7 +45,7 @@ async function parseAuthResponse(res: Response): Promise<AuthResponse> {
 export async function fetchCurrentUser(): Promise<AuthUser | null> {
   const res = await fetch('/api/auth/me', { credentials: 'include' })
   if (res.status === 401) return null
-  const data = await parseAuthResponse(res)
+  const data = await parseJsonResponse<AuthResponse>(res)
   return data.user ?? null
 }
 
@@ -55,7 +61,7 @@ export async function signup(input: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   })
-  const data = await parseAuthResponse(res)
+  const data = await parseJsonResponse<AuthResponse>(res)
   if (!data.user) throw new Error('Signup failed')
   return data.user
 }
@@ -71,7 +77,7 @@ export async function login(input: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   })
-  const data = await parseAuthResponse(res)
+  const data = await parseJsonResponse<AuthResponse>(res)
   if (!data.user) throw new Error('Login failed')
   return data.user
 }
@@ -82,7 +88,7 @@ export async function logout(): Promise<void> {
     credentials: 'include',
   })
   if (!res.ok) {
-    const data = (await res.json()) as AuthResponse
+    const data = await parseJsonResponse<AuthResponse>(res)
     throw new Error(data.error ?? 'Logout failed')
   }
 }
@@ -100,10 +106,7 @@ export async function submitRoundScore(input: {
     body: JSON.stringify(input),
   })
 
-  const data = (await res.json()) as ScoreResponse
-  if (!res.ok) {
-    throw new Error(data.error ?? 'Could not save score')
-  }
+  const data = await parseJsonResponse<ScoreResponse>(res)
 
   return {
     delta: data.delta ?? 0,
@@ -113,9 +116,6 @@ export async function submitRoundScore(input: {
 
 export async function fetchLeaderboard(limit = 50): Promise<LeaderboardPlayer[]> {
   const res = await fetch(`/api/leaderboard?limit=${limit}`, { credentials: 'include' })
-  const data = (await res.json()) as LeaderboardResponse
-  if (!res.ok) {
-    throw new Error(data.error ?? 'Could not load leaderboard')
-  }
+  const data = await parseJsonResponse<LeaderboardResponse>(res)
   return data.players ?? []
 }

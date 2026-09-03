@@ -1,13 +1,13 @@
 import { ObjectId } from 'mongodb'
 import type { Difficulty, RoundAction } from '../../src/types'
-import { ensureIndexes, getClient, getDb } from '../_lib/db'
-import { findClip } from '../_lib/clips'
-import { checkGuess } from '../_lib/guess'
-import { getClientIp, methodNotAllowed, readJsonBody, sendJson, type ApiRequest, type ApiResponse } from '../_lib/http'
-import { checkRateLimit } from '../_lib/rateLimit'
-import { computePointsFromActions } from '../_lib/scoring'
-import { getSessionToken, verifySessionToken } from '../_lib/session'
-import { findUserById } from '../_lib/users'
+import { ensureIndexes, getClient, getDb } from '../_lib/db.js'
+import { findClip } from '../_lib/clips.js'
+import { checkGuess } from '../_lib/guess.js'
+import { getClientIp, methodNotAllowed, readJsonBody, sendJson, type ApiRequest, type ApiResponse } from '../_lib/http.js'
+import { checkRateLimit } from '../_lib/rateLimit.js'
+import { computePointsFromActions } from '../_lib/scoring.js'
+import { getSessionToken, verifySessionToken } from '../_lib/session.js'
+import { findUserById } from '../_lib/users.js'
 
 type ScoreRoundBody = {
   roundKey?: unknown

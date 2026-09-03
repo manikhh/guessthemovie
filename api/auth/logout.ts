@@ -1,5 +1,5 @@
-import { methodNotAllowed, sendJson, type ApiRequest, type ApiResponse } from '../_lib/http'
-import { clearSessionCookie } from '../_lib/session'
+import { methodNotAllowed, sendJson, type ApiRequest, type ApiResponse } from '../_lib/http.js'
+import { clearSessionCookie } from '../_lib/session.js'
 
 export default function handler(req: ApiRequest, res: ApiResponse): void {
   if (req.method !== 'POST') {

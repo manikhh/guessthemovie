@@ -1,10 +1,10 @@
-import { ensureIndexes } from '../_lib/db'
-import { getClientIp, methodNotAllowed, readJsonBody, sendJson, type ApiRequest, type ApiResponse } from '../_lib/http'
-import { checkRateLimit } from '../_lib/rateLimit'
-import { createSessionToken, setSessionCookie } from '../_lib/session'
-import { verifyTurnstile } from '../_lib/turnstile'
-import { findUserByUsername, publicUser, verifyPassword } from '../_lib/users'
-import { normalizeUsername, validatePassword } from '../_lib/validation'
+import { ensureIndexes } from '../_lib/db.js'
+import { getClientIp, methodNotAllowed, readJsonBody, sendJson, type ApiRequest, type ApiResponse } from '../_lib/http.js'
+import { checkRateLimit } from '../_lib/rateLimit.js'
+import { createSessionToken, setSessionCookie } from '../_lib/session.js'
+import { verifyTurnstile } from '../_lib/turnstile.js'
+import { findUserByUsername, publicUser, verifyPassword } from '../_lib/users.js'
+import { normalizeUsername, validatePassword } from '../_lib/validation.js'
 
 type LoginBody = {
   username?: unknown
