@@ -1592,11 +1592,31 @@ input {
   background: var(--accent-subtle);
 }
 
+.leaderboard-row.is-first {
+  border-color: rgba(240, 193, 74, 0.45);
+  background:
+    radial-gradient(120% 140% at 0% 50%, rgba(240, 193, 74, 0.14), transparent 55%),
+    var(--surface);
+  box-shadow: 0 0 0 1px rgba(240, 193, 74, 0.08), 0 8px 24px rgba(201, 137, 26, 0.08);
+}
+
+.leaderboard-row.is-first.is-you {
+  border-color: rgba(240, 193, 74, 0.65);
+}
+
 .leaderboard-rank {
   font-family: var(--font-mono);
   font-size: var(--caption);
   color: var(--text-disabled);
   text-align: center;
+  display: grid;
+  place-items: center;
+  min-height: 28px;
+}
+
+.leaderboard-crown {
+  display: block;
+  filter: drop-shadow(0 2px 6px rgba(201, 137, 26, 0.45));
 }
 
 .leaderboard-name {

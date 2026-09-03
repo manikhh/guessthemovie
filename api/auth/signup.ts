@@ -3,7 +3,7 @@ import { getClientIp, methodNotAllowed, readJsonBody, sendJson, type ApiRequest,
 import { checkRateLimit } from '../_lib/rateLimit.js'
 import { createSessionToken, setSessionCookie } from '../_lib/session.js'
 import { verifyTurnstile } from '../_lib/turnstile.js'
-import { createUser, publicUser } from '../_lib/users.js'
+import { createUser, findUserByUsername, publicUser } from '../_lib/users.js'
 import { normalizeUsername, passwordsMatch, validatePassword } from '../_lib/validation.js'
 
 type SignupBody = {
@@ -70,6 +70,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
 
     if (!passwordsMatch(password, body.repeatPassword)) {
       sendJson(res, 400, { error: 'Passwords do not match.' })
+      return
+    }
+
+    const taken = await findUserByUsername(username)
+    if (taken) {
+      sendJson(res, 409, { error: 'Username is already taken.' })
       return
     }
 

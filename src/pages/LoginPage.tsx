@@ -76,7 +76,7 @@ export function LoginPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
-              minLength={3}
+              minLength={2}
               maxLength={32}
               pattern="[a-zA-Z0-9_]+"
             />

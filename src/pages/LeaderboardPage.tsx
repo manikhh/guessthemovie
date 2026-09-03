@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { FactoryMark } from '../components/FactoryMark'
+import { RankOneCrown } from '../components/icons'
 import { fetchLeaderboard, type LeaderboardPlayer } from '../lib/auth'
 import { useAuth } from '../hooks/useAuth'
 
@@ -31,7 +32,9 @@ export function LeaderboardPage() {
     }
   }, [refresh])
 
-  const youFromBoard = user ? players.find((player) => player.username === user.username) : null
+  const youFromBoard = user
+    ? players.find((player) => player.username.toLowerCase() === user.username.toLowerCase())
+    : null
   const youPoints = youFromBoard?.points ?? user?.points
 
   return (
@@ -64,13 +67,16 @@ export function LeaderboardPage() {
         {!loading && !error && players.length > 0 && (
           <ol className="leaderboard-list">
             {players.map((player) => {
-              const isYou = user?.username === player.username
+              const isYou = user?.username.toLowerCase() === player.username.toLowerCase()
+              const isFirst = player.rank === 1
               return (
                 <li
                   key={`${player.rank}-${player.username}`}
-                  className={`leaderboard-row ${isYou ? 'is-you' : ''}`}
+                  className={`leaderboard-row ${isYou ? 'is-you' : ''} ${isFirst ? 'is-first' : ''}`}
                 >
-                  <span className="leaderboard-rank">{player.rank}</span>
+                  <span className="leaderboard-rank">
+                    {isFirst ? <RankOneCrown className="leaderboard-crown" /> : player.rank}
+                  </span>
                   <span className="leaderboard-name">@{player.username}</span>
                   <span className="leaderboard-points">{player.points} pts</span>
                 </li>

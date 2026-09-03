@@ -17,9 +17,15 @@ export type LeaderboardEntry = {
   points: number
 }
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 export async function findUserByUsername(username: string): Promise<UserDoc | null> {
   const db = await getDb()
-  return db.collection<UserDoc>('users').findOne({ username })
+  return db.collection<UserDoc>('users').findOne({
+    username: { $regex: `^${escapeRegex(username)}$`, $options: 'i' },
+  })
 }
 
 export async function findUserById(id: string): Promise<UserDoc | null> {
