@@ -77,7 +77,7 @@ export function LeaderboardPage() {
                   <span className="leaderboard-rank">
                     {isFirst ? <RankOneCrown className="leaderboard-crown" /> : player.rank}
                   </span>
-                  <span className="leaderboard-name">@{player.username}</span>
+                  <span className="leaderboard-name">{player.username}</span>
                   <span className="leaderboard-points">{player.points} pts</span>
                 </li>
               )
