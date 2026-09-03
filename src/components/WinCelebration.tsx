@@ -8,7 +8,7 @@ interface WinCelebrationProps {
   onDone?: () => void
 }
 
-const COLORS = ['#ffffff', '#e8e8e8', '#999999', '#666666', '#d71921', '#4a9e5c', '#d4a843']
+const COLORS = ['#fff8f7', '#ebe4e4', '#a39898', '#6e6565', '#c41e26', '#4a9e5c', '#d4a843']
 
 function makePieces(count: number) {
   return Array.from({ length: count }, (_, i) => {
