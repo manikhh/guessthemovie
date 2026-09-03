@@ -1,5 +1,5 @@
 import type { Difficulty } from '../types'
-import { getClipsForDifficulty } from './difficulty'
+import { getTitlesForDifficulty } from './difficulty'
 
 function normalize(text: string): string {
   return text
@@ -21,9 +21,9 @@ export function searchMovieTitles(
   if (q.length < 1) return []
 
   const titles = new Map<string, string>()
-  for (const clip of getClipsForDifficulty(difficulty)) {
-    const key = normalize(clip.title)
-    if (!titles.has(key)) titles.set(key, clip.title)
+  for (const title of getTitlesForDifficulty(difficulty)) {
+    const key = normalize(title)
+    if (!titles.has(key)) titles.set(key, title)
   }
 
   const scored: { title: string; score: number }[] = []

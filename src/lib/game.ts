@@ -1,4 +1,4 @@
-import type { Difficulty, MovieClip, RoundState, SessionStats } from '../types'
+import type { Difficulty, PublicClip, RoundAction, RoundState, SessionStats } from '../types'
 
 export const MAX_LEVELS = 6
 
@@ -18,7 +18,7 @@ export function formatDuration(sec: number): string {
   return `${sec}s`
 }
 
-export function createRound(movie: MovieClip): RoundState {
+export function createRound(movie: Pick<PublicClip, 'id' | 'difficulty'>): RoundState {
   return {
     movieId: movie.id,
     difficulty: movie.difficulty,
@@ -27,6 +27,26 @@ export function createRound(movie: MovieClip): RoundState {
     finished: false,
     won: false,
     wonAtLevel: null,
+  }
+}
+
+export function hydrateRound(
+  movie: Pick<PublicClip, 'id' | 'difficulty'>,
+  actions: RoundAction[],
+  outcome: Pick<RoundState, 'unlockedLevel' | 'finished' | 'won' | 'wonAtLevel'>,
+): RoundState {
+  const guesses = actions
+    .filter((action): action is Extract<RoundAction, { type: 'guess' }> => action.type === 'guess')
+    .map((action) => action.text)
+
+  return {
+    movieId: movie.id,
+    difficulty: movie.difficulty,
+    unlockedLevel: outcome.unlockedLevel,
+    guesses,
+    finished: outcome.finished,
+    won: outcome.won,
+    wonAtLevel: outcome.wonAtLevel,
   }
 }
 
@@ -68,7 +88,8 @@ export function scoreRound(round: RoundState): number {
     return scoreForLevel(round.wonAtLevel ?? 0) - wrongGuesses
   }
 
-  return -round.guesses.length
+  const skipPenalty = round.guesses.length < MAX_LEVELS ? 1 : 0
+  return -round.guesses.length - skipPenalty
 }
 
 export function applyRoundToStats(stats: SessionStats, round: RoundState): SessionStats {

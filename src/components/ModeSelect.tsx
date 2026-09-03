@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import type { Difficulty } from '../types'
-import { DIFFICULTY_HINTS, DIFFICULTY_LABELS, getClipsForDifficulty } from '../lib/difficulty'
+import { DIFFICULTY_HINTS, DIFFICULTY_LABELS, getPoolSize } from '../lib/difficulty'
 import { loadBest } from '../lib/game'
 
 const MODES: Difficulty[] = ['easy', 'medium', 'hard']
@@ -15,7 +15,7 @@ export function ModeSelect() {
 
       <div className="menu-grid">
         {MODES.map((mode, i) => {
-          const count = getClipsForDifficulty(mode).length
+          const count = getPoolSize(mode)
           const best = loadBest(mode)
 
           return (

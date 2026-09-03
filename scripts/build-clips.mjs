@@ -10,6 +10,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { spawnSync } from 'node:child_process'
 import { MOVIES } from './movies.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -339,3 +340,4 @@ const byTier = clips.reduce((acc, c) => {
 console.log(`\nWrote ${clips.length} clips to src/data/clips.json`)
 console.log(`  easy: ${byTier.easy ?? 0}  medium: ${byTier.medium ?? 0}  hard: ${byTier.hard ?? 0}`)
 console.log(`  missed: ${todo.length - (byId.size - (MOVIES.length - todo.length))}`)
+spawnSync(process.execPath, [resolve(__dirname, 'write-titles.mjs')], { stdio: 'inherit' })

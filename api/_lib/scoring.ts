@@ -14,7 +14,8 @@ export function scoreRound(round: RoundState): number {
     return scoreForLevel(round.wonAtLevel ?? 0) - wrongGuesses
   }
 
-  return -round.guesses.length
+  const skipPenalty = round.guesses.length < MAX_LEVELS ? 1 : 0
+  return -round.guesses.length - skipPenalty
 }
 
 function isValidLevel(level: number): boolean {
@@ -40,6 +41,8 @@ export function validateRoundActions(actions: RoundAction[]): boolean {
 
     if (action.type === 'giveup') {
       if (!isValidLevel(action.level) || action.level !== level) return false
+      // Match the UI: give up only after the longest clip is unlocked.
+      if (level !== MAX_LEVELS - 1) return false
       finished = true
       continue
     }
@@ -52,7 +55,7 @@ export function validateRoundActions(actions: RoundAction[]): boolean {
     if (guessCount > MAX_LEVELS) return false
   }
 
-  return guessCount > 0 || actions.some((action) => action.type === 'giveup')
+  return true
 }
 
 export function computePointsFromActions(
@@ -75,7 +78,7 @@ export function computePointsFromActions(
 
     if (action.type === 'giveup') {
       if (action.level !== level) return null
-      return total
+      return total - 1
     }
 
     if (action.type !== 'guess') return null
@@ -93,5 +96,6 @@ export function computePointsFromActions(
     total -= 1
   }
 
-  return total
+  if (guessCount >= MAX_LEVELS) return total
+  return null
 }

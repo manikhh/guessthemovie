@@ -1,11 +1,10 @@
 import { ObjectId } from 'mongodb'
-import type { Difficulty, RoundAction } from '../../src/types'
+import type { Difficulty } from '../../src/types'
 import { ensureIndexes, getClient, getDb } from '../_lib/db.js'
-import { findClip } from '../_lib/clips.js'
-import { checkGuess } from '../_lib/guess.js'
+import { findClip, toClipReveal } from '../_lib/clips.js'
 import { getClientIp, methodNotAllowed, readJsonBody, sendJson, type ApiRequest, type ApiResponse } from '../_lib/http.js'
+import { clearActiveRound, getActiveRound, pointsForSession } from '../_lib/playSession.js'
 import { checkRateLimit } from '../_lib/rateLimit.js'
-import { computePointsFromActions } from '../_lib/scoring.js'
 import { getSessionToken, verifySessionToken } from '../_lib/session.js'
 import { findUserById } from '../_lib/users.js'
 
@@ -13,7 +12,6 @@ type ScoreRoundBody = {
   roundKey?: unknown
   movieId?: unknown
   difficulty?: unknown
-  actions?: unknown
 }
 
 const DIFFICULTIES = new Set<Difficulty>(['easy', 'medium', 'hard'])
@@ -25,29 +23,6 @@ function ensureReady(): Promise<void> {
     indexesReady = ensureIndexes().catch(() => {})
   }
   return indexesReady
-}
-
-function isRoundAction(value: unknown): value is RoundAction {
-  if (!value || typeof value !== 'object') return false
-  const action = value as Record<string, unknown>
-
-  if (action.type === 'unlock') return true
-
-  if (action.type === 'giveup') {
-    return typeof action.level === 'number'
-  }
-
-  if (action.type === 'guess') {
-    return typeof action.text === 'string' && typeof action.level === 'number'
-  }
-
-  return false
-}
-
-function parseActions(raw: unknown): RoundAction[] | null {
-  if (!Array.isArray(raw) || raw.length === 0 || raw.length > 32) return null
-  if (!raw.every(isRoundAction)) return null
-  return raw
 }
 
 async function loadExistingScore(
@@ -76,6 +51,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   }
 
   let roundKey = ''
+  let reveal: { title: string; year: number } | null = null
 
   try {
     await ensureReady()
@@ -134,27 +110,25 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       return
     }
 
-    const actions = parseActions(body.actions)
-    if (!actions) {
-      sendJson(res, 400, { error: 'Invalid round actions' })
-      return
-    }
-
     const movie = findClip(movieId, difficulty as Difficulty)
-    if (!movie) {
-      sendJson(res, 400, { error: 'Unknown movie for this difficulty' })
-      return
-    }
-
-    const delta = computePointsFromActions(actions, movie, checkGuess)
-    if (delta === null) {
-      sendJson(res, 400, { error: 'Round actions could not be verified' })
-      return
-    }
+    reveal = movie ? toClipReveal(movie) : null
 
     const replay = await loadExistingScore(roundKey, session.sub)
     if (replay) {
-      sendJson(res, 200, replay)
+      await clearActiveRound(session.sub, difficulty as Difficulty)
+      sendJson(res, 200, { ...replay, reveal })
+      return
+    }
+
+    const active = await getActiveRound(session.sub, difficulty as Difficulty, movieId, roundKey)
+    if (!active) {
+      sendJson(res, 403, { error: 'This round is no longer active.' })
+      return
+    }
+
+    const delta = pointsForSession(active.session, active.clip)
+    if (delta === null) {
+      sendJson(res, 400, { error: 'Finish the round before submitting a score.' })
       return
     }
 
@@ -213,7 +187,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       await mongoSession.endSession()
     }
 
-    sendJson(res, 200, { delta: resultDelta, points: resultPoints })
+    await clearActiveRound(session.sub, difficulty as Difficulty)
+
+    sendJson(res, 200, {
+      delta: resultDelta,
+      points: resultPoints,
+      reveal: toClipReveal(active.clip),
+    })
   } catch (err) {
     const message = err instanceof Error ? err.message : ''
     const code = (err as { code?: number }).code
@@ -233,7 +213,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       if (session) {
         const replay = await loadExistingScore(roundKey, session.sub)
         if (replay) {
-          sendJson(res, 200, replay)
+          sendJson(res, 200, {
+            ...replay,
+            reveal,
+          })
           return
         }
       }

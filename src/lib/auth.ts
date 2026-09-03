@@ -1,4 +1,4 @@
-import type { Difficulty, RoundAction } from '../types'
+import type { ClipReveal, Difficulty, PublicClip, RoundAction } from '../types'
 
 export type AuthUser = {
   id: string
@@ -20,11 +20,30 @@ type AuthResponse = {
 type ScoreResponse = {
   delta?: number
   points?: number
+  reveal?: ClipReveal | null
   error?: string
 }
 
 type LeaderboardResponse = {
   players?: LeaderboardPlayer[]
+  error?: string
+}
+
+export type PlayView = {
+  clip: PublicClip
+  roundKey: string
+  watched: number
+  poolSize: number
+  cycle: number
+  actions: RoundAction[]
+  unlockedLevel: number
+  finished: boolean
+  won: boolean
+  wonAtLevel: number | null
+  reveal: ClipReveal | null
+}
+
+type NextClipResponse = PlayView & {
   error?: string
 }
 
@@ -97,8 +116,7 @@ export async function submitRoundScore(input: {
   roundKey: string
   movieId: string
   difficulty: Difficulty
-  actions: RoundAction[]
-}): Promise<{ delta: number; points: number }> {
+}): Promise<{ delta: number; points: number; reveal: ClipReveal | null }> {
   const res = await fetch('/api/score/round', {
     method: 'POST',
     credentials: 'include',
@@ -111,6 +129,69 @@ export async function submitRoundScore(input: {
   return {
     delta: data.delta ?? 0,
     points: data.points ?? 0,
+    reveal: data.reveal ?? null,
+  }
+}
+
+export async function fetchNextClip(difficulty: Difficulty, advance = false): Promise<PlayView> {
+  const res = await fetch('/api/play/next', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ difficulty, advance }),
+  })
+
+  if (res.status === 404 && !advance) {
+    return fetchNextClip(difficulty, true)
+  }
+
+  const data = await parseJsonResponse<NextClipResponse>(res)
+  if (!data.clip || !data.roundKey) {
+    throw new Error('Could not load the next clip')
+  }
+
+  return {
+    clip: data.clip,
+    roundKey: data.roundKey,
+    watched: data.watched ?? 0,
+    poolSize: data.poolSize ?? 0,
+    cycle: data.cycle ?? 1,
+    actions: data.actions ?? [],
+    unlockedLevel: data.unlockedLevel ?? 0,
+    finished: data.finished === true,
+    won: data.won === true,
+    wonAtLevel: data.wonAtLevel ?? null,
+    reveal: data.reveal ?? null,
+  }
+}
+
+export async function submitPlayAction(input: {
+  difficulty: Difficulty
+  roundKey: string
+  action: RoundAction
+}): Promise<PlayView> {
+  const res = await fetch('/api/play/action', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  const data = await parseJsonResponse<NextClipResponse>(res)
+  if (!data.clip || !data.roundKey) {
+    throw new Error('Could not update the round')
+  }
+  return {
+    clip: data.clip,
+    roundKey: data.roundKey,
+    watched: data.watched ?? 0,
+    poolSize: data.poolSize ?? 0,
+    cycle: data.cycle ?? 1,
+    actions: data.actions ?? [],
+    unlockedLevel: data.unlockedLevel ?? 0,
+    finished: data.finished === true,
+    won: data.won === true,
+    wonAtLevel: data.wonAtLevel ?? null,
+    reveal: data.reveal ?? null,
   }
 }
 

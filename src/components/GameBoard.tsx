@@ -1,25 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import type { Difficulty, MovieClip, RoundAction, RoundState, SessionStats } from '../types'
-import { Deck } from '../lib/deck'
+import type { ClipReveal, Difficulty, PublicClip, RoundAction, RoundState, SessionStats } from '../types'
 import { DIFFICULTY_LABELS } from '../lib/difficulty'
-import { checkGuess } from '../lib/guess'
-import { submitRoundScore } from '../lib/auth'
+import { fetchNextClip, submitPlayAction, submitRoundScore, type PlayView } from '../lib/auth'
 import { useAuth } from '../hooks/useAuth'
 import {
-  applyGuess,
   applyRoundToStats,
   clipDurationForLevel,
-  createRound,
   EMPTY_STATS,
   formatDuration,
-  giveUp,
+  hydrateRound,
   loadBest,
   MAX_LEVELS,
   saveBest,
   scoreForLevel,
   scoreRound,
-  unlockNextLevel,
 } from '../lib/game'
 import { YouTubePlayer, type YouTubePlayerHandle } from './YouTubePlayer'
 import { ClipTimeline } from './ClipTimeline'
@@ -34,17 +29,11 @@ import {
   MorphIcon,
   Pause,
   Play,
-  RotateCcw,
 } from './icons'
 
 interface GameBoardProps {
   difficulty: Difficulty
   onExit: () => void
-}
-
-function startSession(deck: Deck): { movie: MovieClip | null; round: RoundState | null } {
-  const movie = deck.next()
-  return { movie, round: movie ? createRound(movie) : null }
 }
 
 function loadVolume(): number {
@@ -60,20 +49,25 @@ function loadVolume(): number {
 }
 
 export function GameBoard({ difficulty, onExit }: GameBoardProps) {
-  const { user, loading, setUser } = useAuth()
-  const deck = useMemo(() => new Deck(difficulty), [difficulty])
+  const { user, setUser } = useAuth()
   const best = useRef(loadBest(difficulty))
 
-  const [session, setSession] = useState(() => startSession(deck))
-  const { movie, round } = session
+  const [movie, setMovie] = useState<(PublicClip & Partial<ClipReveal>) | null>(null)
+  const [round, setRound] = useState<RoundState | null>(null)
+  const [poolProgress, setPoolProgress] = useState({ watched: 0, poolSize: 0 })
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadingClip, setLoadingClip] = useState(true)
+  const [loadingNext, setLoadingNext] = useState(false)
+  const [scorePending, setScorePending] = useState(false)
+  const [scoreError, setScoreError] = useState<string | null>(null)
 
-  const roundKeyRef = useRef(crypto.randomUUID())
-  const actionsRef = useRef<RoundAction[]>([])
-  const pendingScoreRef = useRef<{
-    roundKey: string
-    movieId: string
-    actions: RoundAction[]
-  } | null>(null)
+  const roundKeyRef = useRef('')
+  const statsAppliedKeyRef = useRef('')
+  const scoreStartedKeyRef = useRef('')
+  const actionLockRef = useRef(false)
+  const advancingRef = useRef(false)
+  const wantNextRef = useRef(false)
+  const scorePromiseRef = useRef(Promise.resolve(false))
 
   const [stats, setStats] = useState<SessionStats>(EMPTY_STATS)
   const [activeLevel, setActiveLevel] = useState(0)
@@ -87,6 +81,108 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
   const [celebrating, setCelebrating] = useState(false)
   const [volume, setVolume] = useState(loadVolume)
 
+  const statsRef = useRef(stats)
+  statsRef.current = stats
+
+  const applyView = useCallback((view: PlayView, isNewRound = false) => {
+    const switchedRound = isNewRound || view.roundKey !== roundKeyRef.current
+    roundKeyRef.current = view.roundKey
+    const nextRound = hydrateRound(view.clip, view.actions, view)
+    setMovie({ ...view.clip, ...view.reveal })
+    setRound(nextRound)
+    setPoolProgress({ watched: view.watched, poolSize: view.poolSize })
+    setActiveLevel(view.unlockedLevel)
+    setPlayerError(null)
+    setLoadError(null)
+    if (switchedRound) {
+      setFeedback(null)
+      setCelebrating(false)
+      setScoreError(null)
+      setScorePending(false)
+      scorePromiseRef.current = Promise.resolve(false)
+      wantNextRef.current = false
+      if (!view.finished) {
+        setIsPlaying(false)
+        setPlayerReady(false)
+        setShakeToken(0)
+        setFocusToken((t) => t + 1)
+      }
+    }
+    return nextRound
+  }, [])
+
+  const submitScore = useCallback(
+    async (roundKey: string, movieId: string) => {
+      setScorePending(true)
+      setScoreError(null)
+      const run = (async () => {
+        try {
+          const { points, reveal } = await submitRoundScore({
+            roundKey,
+            movieId,
+            difficulty,
+          })
+          if (reveal) setMovie((prev) => (prev ? { ...prev, ...reveal } : prev))
+          setUser((prev) => (prev ? { ...prev, points } : prev))
+          return true
+        } catch (err) {
+          setScoreError(err instanceof Error ? err.message : 'Could not save score')
+          return false
+        } finally {
+          setScorePending(false)
+        }
+      })()
+      scorePromiseRef.current = run
+      return run
+    },
+    [difficulty, setUser],
+  )
+
+  const finishRound = useCallback(
+    (next: RoundState) => {
+      if (statsAppliedKeyRef.current !== roundKeyRef.current) {
+        statsAppliedKeyRef.current = roundKeyRef.current
+        const updated = applyRoundToStats(statsRef.current, next)
+        setStats(updated)
+        saveBest(difficulty, updated.score)
+        setFeedback(null)
+        setIsPlaying(false)
+        playerRef.current?.pause()
+        if (next.won) setCelebrating(true)
+      }
+      if (scoreStartedKeyRef.current !== roundKeyRef.current) {
+        scoreStartedKeyRef.current = roundKeyRef.current
+        void submitScore(roundKeyRef.current, next.movieId)
+      }
+    },
+    [difficulty, submitScore],
+  )
+
+  const loadClip = useCallback(
+    async (advance: boolean) => {
+      setLoadError(null)
+      if (advance) setLoadingNext(true)
+      else setLoadingClip(true)
+
+      try {
+        const view = await fetchNextClip(difficulty, advance)
+        const nextRound = applyView(view, true)
+        if (view.finished) finishRound(nextRound)
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : 'Could not load clip')
+      } finally {
+        setLoadingClip(false)
+        setLoadingNext(false)
+        advancingRef.current = false
+      }
+    },
+    [applyView, difficulty, finishRound],
+  )
+
+  useEffect(() => {
+    void loadClip(false)
+  }, [loadClip])
+
   function handleVolumeChange(next: number) {
     setVolume(next)
     try {
@@ -97,147 +193,133 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
   }
 
   const play = useCallback((level: number) => {
+    if (round?.finished) return
     setActiveLevel(level)
     setPlayerError(null)
     playerRef.current?.play()
-  }, [])
+  }, [round?.finished])
 
   const togglePlayback = useCallback(() => {
+    if (round?.finished) return
     if (isPlaying) {
       playerRef.current?.pause()
       return
     }
     play(activeLevel)
-  }, [activeLevel, isPlaying, play])
+  }, [activeLevel, isPlaying, play, round?.finished])
 
   const prefetchNextMovie = useCallback(() => {
-    const next = deck.peek()
-    if (next) playerRef.current?.preloadNext(next.youtubeId, next.startSec)
-  }, [deck])
+    /* next clip is server-assigned only after the current round is scored */
+  }, [])
 
-  const submitScore = useCallback(
-    async (roundKey: string, movieId: string, actions: RoundAction[]) => {
-      try {
-        const { points } = await submitRoundScore({
-          roundKey,
-          movieId,
-          difficulty,
-          actions,
-        })
-        setUser((prev) => (prev ? { ...prev, points } : prev))
-      } catch {
-        /* offline or auth expired — local run score still updates */
-      }
-    },
-    [difficulty, setUser],
-  )
-
-  const persistRoundScore = useCallback(
-    (actions: RoundAction[], currentMovie: MovieClip) => {
-      const payload = {
-        roundKey: roundKeyRef.current,
-        movieId: currentMovie.id,
-        actions: [...actions],
-      }
-
-      if (loading) {
-        pendingScoreRef.current = payload
-        return
-      }
-
-      if (!user) {
-        pendingScoreRef.current = null
-        return
-      }
-
-      pendingScoreRef.current = null
-      void submitScore(payload.roundKey, payload.movieId, payload.actions)
-    },
-    [loading, submitScore, user],
-  )
-
-  useEffect(() => {
-    if (loading) return
-
-    if (!user) {
-      pendingScoreRef.current = null
+  const advanceIfQueued = useCallback(async () => {
+    if (!wantNextRef.current || advancingRef.current) return
+    advancingRef.current = true
+    const saved = await scorePromiseRef.current
+    if (!wantNextRef.current) {
+      advancingRef.current = false
       return
     }
+    if (!saved) {
+      advancingRef.current = false
+      wantNextRef.current = false
+      return
+    }
+    wantNextRef.current = false
+    await loadClip(true)
+  }, [loadClip])
 
-    const pending = pendingScoreRef.current
-    if (!pending) return
+  async function sendAction(action: RoundAction) {
+    if (actionLockRef.current) return
+    actionLockRef.current = true
+    try {
+      const view = await submitPlayAction({
+        difficulty,
+        roundKey: roundKeyRef.current,
+        action,
+      })
+      const nextRound = applyView(view)
+      if (action.type === 'unlock' && !view.finished) {
+        play(view.unlockedLevel)
+      }
+      if (action.type === 'guess' && !view.finished) {
+        setFeedback(`[-1] "${action.text.trim()}"`)
+        setShakeToken((t) => t + 1)
+        window.setTimeout(() => setFeedback(null), 1800)
+      }
+      if (view.finished) {
+        finishRound(nextRound)
+        if (wantNextRef.current) void advanceIfQueued()
+      } else {
+        wantNextRef.current = false
+      }
+    } catch (err) {
+      setFeedback(err instanceof Error ? err.message : 'Could not send that')
+      wantNextRef.current = false
+    } finally {
+      actionLockRef.current = false
+    }
+  }
 
-    pendingScoreRef.current = null
-    void submitScore(pending.roundKey, pending.movieId, pending.actions)
-  }, [loading, submitScore, user])
-
-  function finishRound(next: RoundState, currentMovie: MovieClip) {
-    const updated = applyRoundToStats(stats, next)
-    setStats(updated)
-    saveBest(difficulty, updated.score)
-    setFeedback(null)
-    persistRoundScore(actionsRef.current, currentMovie)
-    if (next.won) setCelebrating(true)
+  function queueNext() {
+    wantNextRef.current = true
+    if (scoreStartedKeyRef.current === roundKeyRef.current) {
+      void advanceIfQueued()
+    }
   }
 
   function handleGuess(guess: string) {
-    if (!round || !movie || round.finished) return
-
-    const level = round.unlockedLevel
-    actionsRef.current.push({ type: 'guess', text: guess, level })
-
-    const correct = checkGuess(guess, movie)
-    const next = applyGuess(round, guess, correct)
-    setSession((s) => ({ ...s, round: next }))
-
-    if (next.finished) {
-      finishRound(next, movie)
+    if (!round) return
+    if (round.finished || actionLockRef.current) {
+      queueNext()
       return
     }
-
-    setFeedback(`[-1] "${guess}"`)
-    setShakeToken((t) => t + 1)
-    window.setTimeout(() => setFeedback(null), 1800)
+    void sendAction({ type: 'guess', text: guess, level: round.unlockedLevel })
   }
 
   function handleShowMore() {
-    if (!round || round.finished) return
-    const next = unlockNextLevel(round)
-    if (next === round) return
-    actionsRef.current.push({ type: 'unlock' })
-    setSession((s) => ({ ...s, round: next }))
-    play(next.unlockedLevel)
+    if (!round) return
+    if (round.finished || actionLockRef.current) {
+      queueNext()
+      return
+    }
+    void sendAction({ type: 'unlock' })
   }
 
   function handleGiveUp() {
-    if (!round || round.finished || !movie) return
-    actionsRef.current.push({ type: 'giveup', level: round.unlockedLevel })
-    const next = giveUp(round)
-    setSession((s) => ({ ...s, round: next }))
-    finishRound(next, movie)
+    if (!round || round.finished || actionLockRef.current) return
+    void sendAction({ type: 'giveup', level: round.unlockedLevel })
   }
 
   function handleNextMovie() {
-    const nextMovie = deck.next()
-    if (!nextMovie) return
-    roundKeyRef.current = crypto.randomUUID()
-    actionsRef.current = []
-    setSession({ movie: nextMovie, round: createRound(nextMovie) })
-    setActiveLevel(0)
-    setIsPlaying(false)
-    setPlayerReady(false)
-    setPlayerError(null)
-    setFeedback(null)
-    setFocusToken((t) => t + 1)
-    setShakeToken(0)
-    setCelebrating(false)
+    queueNext()
   }
 
-  if (!movie || !round) {
+  function handleRetryScore() {
+    if (!round) return
+    void submitScore(roundKeyRef.current, round.movieId)
+  }
+
+  if (loadingClip) {
     return (
       <div className="loading">
-        <p>[EMPTY] No clips for {DIFFICULTY_LABELS[difficulty]}</p>
-        <button type="button" className="btn btn-primary" onClick={onExit}>
+        <p>
+          <LoaderCircle size={14} strokeWidth={1.5} absoluteStrokeWidth className="icon-spin" aria-hidden />
+          {' '}
+          Loading clip…
+        </p>
+      </div>
+    )
+  }
+
+  if (loadError || !movie || !round) {
+    return (
+      <div className="loading">
+        <p>{loadError ?? `[EMPTY] No clips for ${DIFFICULTY_LABELS[difficulty]}`}</p>
+        <button type="button" className="btn btn-primary" onClick={() => void loadClip(false)}>
+          Retry
+        </button>
+        <button type="button" className="btn btn-outline" onClick={onExit}>
           Back
         </button>
       </div>
@@ -255,7 +337,13 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
         <button type="button" className="btn-back" onClick={onExit} aria-label="Back to modes">
           <ChevronLeft size={20} strokeWidth={1.5} absoluteStrokeWidth />
         </button>
-        <StatsBar stats={stats} best={best.current} totalPoints={user?.points ?? null} />
+        <StatsBar
+          stats={stats}
+          best={best.current}
+          watched={poolProgress.watched}
+          poolSize={poolProgress.poolSize}
+          totalPoints={user?.points ?? null}
+        />
         <span className={`chip chip-${difficulty}`}>{DIFFICULTY_LABELS[difficulty]}</span>
       </header>
 
@@ -278,12 +366,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
             <VolumeBar volume={volume} onChange={handleVolumeChange} />
 
             <div className={`screen-cover ${isPlaying ? 'is-hidden' : ''}`}>
-              {finished ? (
-                <button type="button" className="screen-replay" onClick={() => play(activeLevel)}>
-                  <RotateCcw size={14} strokeWidth={1.5} absoluteStrokeWidth aria-hidden />
-                  Replay {formatDuration(clipLength)}
-                </button>
-              ) : playerError ? (
+              {finished ? null : playerError ? (
                 <p className="screen-idle-status">{playerError}</p>
               ) : !playerReady ? (
                 <p className="screen-idle-status">
@@ -312,7 +395,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
       </AnimatePresence>
 
       <AnimatePresence mode="wait">
-        {finished && (!round.won || !celebrating) ? (
+        {finished ? (
           <motion.div
             key="result"
             initial={{ opacity: 0, y: 12 }}
@@ -334,9 +417,13 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
               movie={movie}
               onNext={handleNextMovie}
               onPrefetchNext={prefetchNextMovie}
+              loadingNext={loadingNext}
+              scorePending={scorePending}
+              scoreError={scoreError}
+              onRetryScore={handleRetryScore}
             />
           </motion.div>
-        ) : !finished ? (
+        ) : (
           <motion.div
             key="dock"
             className="theater-dock-wrap"
@@ -406,7 +493,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
               />
             </div>
           </motion.div>
-        ) : null}
+        )}
       </AnimatePresence>
     </div>
   )

@@ -36,4 +36,5 @@ export async function ensureIndexes(): Promise<void> {
   await db.collection('rate_limits').createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
   await db.collection('score_events').createIndex({ roundKey: 1 }, { unique: true })
   await db.collection('score_events').createIndex({ userId: 1, createdAt: -1 })
+  await db.collection('play_sessions').createIndex({ userId: 1, difficulty: 1 }, { unique: true })
 }

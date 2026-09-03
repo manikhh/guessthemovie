@@ -84,6 +84,7 @@ export function GuessInput({
 
   function handleFormSubmit(e: FormEvent) {
     e.preventDefault()
+    if (disabled) return
     if (hasInput) {
       const pick =
         open && suggestions.length > 0
@@ -92,7 +93,7 @@ export function GuessInput({
       submitGuess(pick)
       return
     }
-    if (canShowMore && !disabled) onMore()
+    if (canShowMore) onMore()
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {

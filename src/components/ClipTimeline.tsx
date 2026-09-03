@@ -32,7 +32,7 @@ export function ClipTimeline({
               ]
                 .filter(Boolean)
                 .join(' ')}
-              disabled={!unlocked}
+              disabled={!unlocked || finished}
               onClick={() => onPlayLevel(level)}
               aria-label={`Clip ${level + 1}, ${formatDuration(CLIP_DURATIONS[level]!)}, ${scoreForLevel(level)} points`}
             >

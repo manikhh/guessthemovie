@@ -13,6 +13,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { spawnSync } from 'node:child_process'
 import { MOVIES, type MovieSeed } from './movies'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -265,3 +266,4 @@ console.log(`\nWrote ${clips.length} clips`)
 console.log(`  easy   ${counts.easy}`)
 console.log(`  medium ${counts.medium}`)
 console.log(`  hard   ${counts.hard}`)
+spawnSync(process.execPath, [resolve(__dirname, 'write-titles.mjs')], { stdio: 'inherit' })

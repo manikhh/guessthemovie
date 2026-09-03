@@ -1,5 +1,19 @@
 export type Difficulty = 'easy' | 'medium' | 'hard'
 
+/** Clip fields the client may see while a round is still active. */
+export type PublicClip = {
+  id: string
+  difficulty: Difficulty
+  youtubeId: string
+  startSec: number
+  durationSec: number
+}
+
+export type ClipReveal = {
+  title: string
+  year: number
+}
+
 export interface MovieClip {
   id: string
   title: string

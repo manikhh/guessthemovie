@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { FactoryMark } from '../components/FactoryMark'
 import { TurnstileWidget } from '../components/TurnstileWidget'
 import { login } from '../lib/auth'
@@ -7,6 +7,8 @@ import { useAuth } from '../hooks/useAuth'
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const nextPath = searchParams.get('next')
   const { setUser } = useAuth()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -36,7 +38,12 @@ export function LoginPage() {
         turnstileToken,
       })
       setUser(user)
-      navigate('/', { replace: true })
+      const next = nextPath ?? ''
+      const safeNext =
+        next.startsWith('/') && !next.startsWith('//') && !next.includes('://') && !next.includes('\\')
+          ? next
+          : '/'
+      navigate(safeNext, { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
       setTurnstileToken(null)

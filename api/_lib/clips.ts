@@ -13,3 +13,24 @@ export function findClip(movieId: string, difficulty: Difficulty): MovieClip | n
   if (!clip || clip.difficulty !== difficulty) return null
   return clip
 }
+
+export function getClipsForDifficulty(difficulty: Difficulty): MovieClip[] {
+  return CLIPS.filter((clip) => clip.difficulty === difficulty)
+}
+
+export function toPublicClip(clip: MovieClip) {
+  return {
+    id: clip.id,
+    difficulty: clip.difficulty,
+    youtubeId: clip.youtubeId,
+    startSec: clip.startSec,
+    durationSec: clip.durationSec,
+  }
+}
+
+export function toClipReveal(clip: MovieClip) {
+  return {
+    title: clip.title,
+    year: clip.year,
+  }
+}
