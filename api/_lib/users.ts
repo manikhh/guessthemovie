@@ -8,7 +8,10 @@ export type UserDoc = {
   _id: ObjectId
   username: string
   passwordHash: string
+  /** Movie ranked points. */
   points: number
+  /** Song game points (separate leaderboard). */
+  songPoints?: number
   createdAt: Date
 }
 
@@ -41,6 +44,7 @@ export async function createUser(username: string, password: string): Promise<Us
     username,
     passwordHash,
     points: 0,
+    songPoints: 0,
     createdAt: new Date(),
   }
 
