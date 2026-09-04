@@ -8,11 +8,12 @@ interface ModeSelectProps {
   onSelect: (difficulty: Difficulty) => void
   onPlayRanked: () => void
   onOpenRanks: () => void
+  onOpenMatch: () => void
 }
 
 const MODES: Difficulty[] = ['easy', 'medium', 'hard']
 
-export function ModeSelect({ onSelect, onPlayRanked, onOpenRanks }: ModeSelectProps) {
+export function ModeSelect({ onSelect, onPlayRanked, onOpenRanks, onOpenMatch }: ModeSelectProps) {
   const you = loadProfile()
   const rank = rankOf(you)
   const clan = findClan(you.clanId)
@@ -38,6 +39,12 @@ export function ModeSelect({ onSelect, onPlayRanked, onOpenRanks }: ModeSelectPr
           </em>
         </span>
         <span className="rank-entry-go">Board</span>
+      </button>
+
+      <button type="button" className="ranked-play match-mode-btn" onClick={onOpenMatch}>
+        <span className="ranked-play-kicker">Multiplayer</span>
+        <span className="ranked-play-title">1v1 Movies</span>
+        <span className="ranked-play-hint">10 clips · same round · live scoreboard</span>
       </button>
 
       <button

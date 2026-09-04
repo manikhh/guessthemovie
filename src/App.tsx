@@ -4,12 +4,14 @@ import { FactoryMark } from './components/FactoryMark'
 import { ModeSelect } from './components/ModeSelect'
 import { GameBoard } from './components/GameBoard'
 import { RankHub } from './components/RankHub'
+import { MovieMatch } from './components/match/MovieMatch'
 
 type Screen =
   | { view: 'menu' }
   | { view: 'game'; difficulty: Difficulty; ranked?: false }
   | { view: 'game'; ranked: true }
   | { view: 'ranks' }
+  | { view: 'match' }
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ view: 'menu' })
@@ -37,9 +39,12 @@ export default function App() {
             onSelect={(difficulty) => setScreen({ view: 'game', difficulty })}
             onPlayRanked={() => setScreen({ view: 'game', ranked: true })}
             onOpenRanks={() => setScreen({ view: 'ranks' })}
+            onOpenMatch={() => setScreen({ view: 'match' })}
           />
         ) : screen.view === 'ranks' ? (
           <RankHub onBack={() => setScreen({ view: 'menu' })} />
+        ) : screen.view === 'match' ? (
+          <MovieMatch onExit={() => setScreen({ view: 'menu' })} />
         ) : screen.ranked ? (
           <GameBoard key="ranked" ranked onExit={() => setScreen({ view: 'menu' })} />
         ) : (

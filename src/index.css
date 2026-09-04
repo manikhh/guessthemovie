@@ -1691,6 +1691,264 @@ input {
 .result-rank-up { color: var(--easy); }
 .result-rank-protected { color: #7ec8d8; }
 
+/* ---------- 1v1 Song Match ---------- */
+
+.match-mode-btn {
+  background:
+    linear-gradient(135deg, rgba(61, 203, 138, 0.14), transparent 55%),
+    linear-gradient(180deg, var(--surface), var(--bg-raised));
+  border-color: color-mix(in srgb, #3dcb8a 35%, var(--line));
+}
+
+.match-mode-btn .ranked-play-kicker {
+  color: #3dcb8a;
+}
+
+.match-lobby,
+.match-arena {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.match-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.match-scoreboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.match-player-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.7rem 0.75rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.match-player-card.is-you {
+  border-color: var(--cream);
+  background: rgba(236, 234, 230, 0.06);
+}
+
+.match-player-avatar {
+  font-size: 1.25rem;
+}
+
+.match-player-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.match-player-meta strong {
+  font-size: 0.85rem;
+}
+
+.match-player-meta em {
+  font-style: normal;
+  font-size: 0.7rem;
+  color: var(--text-faint);
+}
+
+.match-player-score {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.match-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.match-phase-tag {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #3dcb8a;
+}
+
+.match-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.1rem 1.15rem;
+  background: linear-gradient(180deg, var(--surface), var(--bg-raised));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  animation: rise 0.28s var(--ease);
+}
+
+.match-panel h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.match-ready-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+}
+
+.match-countdown {
+  align-items: center;
+  text-align: center;
+  min-height: 10rem;
+  justify-content: center;
+}
+
+.match-countdown-num {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--cream);
+}
+
+.match-timer {
+  align-self: center;
+  min-width: 3.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: var(--surface-hi);
+  border: 1px solid var(--line-hi);
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.match-timer[data-urgent='true'] {
+  color: var(--hard);
+  border-color: color-mix(in srgb, var(--hard) 50%, var(--line));
+}
+
+.match-song-player {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--line);
+}
+
+.match-song-player .player-mount {
+  position: absolute;
+  inset: 0;
+}
+
+.match-song-scrub {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(61, 203, 138, 0.08), transparent 55%),
+    rgba(8, 8, 10, 0.35);
+  pointer-events: none;
+}
+
+.match-hidden-hint,
+.match-submitted {
+  margin: 0;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+}
+
+.match-guess {
+  margin-top: 0.25rem;
+}
+
+.match-answer-grid {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.match-answer-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+}
+
+.match-answer-card.is-correct {
+  border-color: color-mix(in srgb, #3dcb8a 55%, var(--line));
+}
+
+.match-answer-card.is-wrong {
+  border-color: color-mix(in srgb, var(--hard) 45%, var(--line));
+}
+
+.match-answer-card em {
+  font-style: normal;
+  color: var(--text-dim);
+}
+
+.match-answer-card span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.match-answer-card.is-correct span { color: #3dcb8a; }
+.match-answer-card.is-wrong span { color: var(--hard); }
+
+.match-final {
+  align-items: center;
+  text-align: center;
+}
+
+.match-final-scores {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.match-final-scores div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-raised);
+}
+
+.match-final-scores .is-winner {
+  border-color: var(--cream);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cream) 35%, transparent);
+}
+
+.match-final-scores strong {
+  font-family: var(--font-display);
+  font-size: 2rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
