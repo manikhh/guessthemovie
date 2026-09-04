@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { FactoryMark } from '../components/FactoryMark'
-import { RankGemCrown, type GemRank } from '../components/icons'
+import { RankTierIcon, type TierRank } from '../components/icons'
 import { fetchLeaderboard, type LeaderboardPlayer } from '../lib/auth'
 import { useAuth } from '../hooks/useAuth'
 
-function isGemRank(rank: number): rank is GemRank {
+function isTierRank(rank: number): rank is TierRank {
   return rank >= 1 && rank <= 5
 }
 
@@ -73,15 +73,15 @@ export function LeaderboardPage() {
           <ol className="leaderboard-list">
             {players.map((player) => {
               const isYou = user?.username.toLowerCase() === player.username.toLowerCase()
-              const gemRank = isGemRank(player.rank) ? player.rank : null
+              const tierRank = isTierRank(player.rank) ? player.rank : null
               return (
                 <li
                   key={`${player.rank}-${player.username}`}
-                  className={`leaderboard-row ${isYou ? 'is-you' : ''} ${gemRank ? `is-gem is-gem-${gemRank}` : ''}`}
+                  className={`leaderboard-row ${isYou ? 'is-you' : ''} ${tierRank ? `is-tier is-tier-${tierRank}` : ''}`}
                 >
                   <span className="leaderboard-rank">
-                    {gemRank ? (
-                      <RankGemCrown rank={gemRank} className="leaderboard-crown" />
+                    {tierRank ? (
+                      <RankTierIcon rank={tierRank} className="leaderboard-tier-icon" />
                     ) : (
                       player.rank
                     )}
