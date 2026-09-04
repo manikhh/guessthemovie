@@ -1,115 +1,210 @@
-interface IconProps {
-  className?: string
+/** Shared icon bindings — MorphIcon (lucide data) + lucide-react statics. */
+import type { ReactElement } from 'react'
+export { MorphIcon } from 'morphicons/react'
+export { Play, Pause, Expand, Send } from 'lucide'
+export {
+  ChevronLeft,
+  ExternalLink,
+  SkipForward,
+  RotateCcw,
+  LoaderCircle,
+  Volume2,
+  VolumeX,
+} from 'lucide-react'
+
+/** Rank ladder: 1 Diamond > 2 Gold > 3 Silver > 4 Bronze > 5 Iron. */
+export type TierRank = 1 | 2 | 3 | 4 | 5
+
+type EmblemProps = {
+  /** Gradient paint for the emblem body. */
+  fill: string
+  /** Top-left gloss sweep, strength already scaled per tier. */
+  gloss: string
+  /** Engraving/detail colour for the tier. */
+  engrave: string
 }
 
-export function TrophyIcon({ className }: IconProps) {
+type TierDef = {
+  name: string
+  /** light -> mid -> deep -> shadow */
+  stops: [string, string, string, string]
+  engrave: string
+  /** Gloss + rim strength, descending down the ladder. */
+  sheen: number
+  Emblem: (props: EmblemProps) => ReactElement
+}
+
+/** #1 Diamond — faceted crystal, sharp geometry, sparkles. */
+function DiamondEmblem({ fill, gloss, engrave }: EmblemProps) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 80 88"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden
-    >
-      <defs>
-        <linearGradient id="trophy-cup" x1="40" y1="8" x2="40" y2="52" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#F7F6F3" />
-          <stop offset="0.45" stopColor="#ECEAE6" />
-          <stop offset="1" stopColor="#C8C4BC" />
-        </linearGradient>
-        <linearGradient id="trophy-base" x1="40" y1="56" x2="40" y2="80" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#8A8A92" />
-          <stop offset="1" stopColor="#5C5C64" />
-        </linearGradient>
-        <linearGradient id="trophy-star" x1="40" y1="0" x2="40" y2="16" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#FFFFFF" />
-          <stop offset="1" stopColor="#C8C4BC" />
-        </linearGradient>
-      </defs>
-      {/* Star crown */}
+    <>
+      <path d="M7.1 2.6h9.8l4.6 6.4L12 22.4 2.5 9 7.1 2.6Z" fill={fill} />
+      <path d="M7.1 2.6h9.8l4.6 6.4L12 22.4 2.5 9 7.1 2.6Z" fill={gloss} />
       <path
-        d="M40 2l3.2 6.8L50 8.5l-5 4.8 1.2 7.2L40 17.5l-6.2 3-1.2-7.2-5-4.8 6.8-.7L40 2z"
-        fill="url(#trophy-star)"
-      />
-      {/* Left handle */}
-      <path
-        d="M18 22c-6 2-8 10-6 16 2 4 6 6 10 6"
-        stroke="url(#trophy-cup)"
-        strokeWidth="4"
-        strokeLinecap="round"
+        d="M2.5 9h19M7.1 2.6 9.6 9 12 22.4 14.4 9l2.5-6.4M9.6 9h4.8"
         fill="none"
+        stroke={engrave}
+        strokeOpacity="0.3"
+        strokeWidth="0.85"
+        strokeLinejoin="round"
       />
-      {/* Right handle */}
-      <path
-        d="M62 22c6 2 8 10 6 16-2 4-6 6-10 6"
-        stroke="url(#trophy-cup)"
-        strokeWidth="4"
-        strokeLinecap="round"
-        fill="none"
-      />
-      {/* Cup */}
-      <path
-        d="M24 18h32l-4 34c-.5 4-4 7-8 7h-8c-4 0-7.5-3-8-7L24 18z"
-        fill="url(#trophy-cup)"
-      />
-      <path
-        d="M28 20h24l-3.5 30c-.3 3-2.8 5.5-5.5 5.5h-7c-2.7 0-5.2-2.5-5.5-5.5L28 20z"
-        fill="rgba(255,255,255,0.15)"
-      />
-      {/* Stem */}
-      <rect x="34" y="52" width="12" height="6" rx="1" fill="url(#trophy-base)" />
-      {/* Base */}
-      <path
-        d="M26 58h28l2 6c.5 1.5-.5 3-2 3H26c-1.5 0-2.5-1.5-2-3l2-6z"
-        fill="url(#trophy-base)"
-      />
-      <ellipse cx="40" cy="68" rx="18" ry="4" fill="url(#trophy-base)" />
-    </svg>
+      <path d="M7.1 2.6 4.8 9h4.8L7.1 2.6Z" fill="#fff" fillOpacity="0.32" />
+      <path d="M20.6 1.4l.7 1.6 1.6.7-1.6.7-.7 1.6-.7-1.6-1.6-.7 1.6-.7.7-1.6Z" fill="#fff" fillOpacity="0.85" />
+      <path d="M2.4 3.4l.45 1 1 .45-1 .45-.45 1-.45-1-1-.45 1-.45.45-1Z" fill="#fff" fillOpacity="0.6" />
+    </>
   )
 }
 
-export function PlayIcon({ className }: IconProps) {
+/** #2 Gold — winged crest shield with a crowned star. */
+function GoldEmblem({ fill, gloss, engrave }: EmblemProps) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 48 48"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden
-    >
-      <circle cx="24" cy="24" r="24" fill="currentColor" />
-      <path d="M20 15.5v17l14-8.5-14-8.5z" fill="#121214" />
-    </svg>
+    <>
+      <path d="M0.8 7.4 5.2 6.1l.6 4.3-5-3Z" fill={fill} fillOpacity="0.85" />
+      <path d="M23.2 7.4 18.8 6.1l-.6 4.3 5-3Z" fill={fill} fillOpacity="0.85" />
+      <path d="M12 1.6 20.4 4.6v7.1c0 4.7-3.4 8.2-8.4 10.1-5-1.9-8.4-5.4-8.4-10.1V4.6L12 1.6Z" fill={fill} />
+      <path d="M12 1.6 20.4 4.6v7.1c0 4.7-3.4 8.2-8.4 10.1-5-1.9-8.4-5.4-8.4-10.1V4.6L12 1.6Z" fill={gloss} />
+      <path
+        d="M12 3.5 18.6 5.9v5.7c0 3.8-2.7 6.7-6.6 8.3-3.9-1.6-6.6-4.5-6.6-8.3V5.9L12 3.5Z"
+        fill="none"
+        stroke={engrave}
+        strokeOpacity="0.35"
+        strokeWidth="0.9"
+      />
+      <path d="M12 6.4l1.5 3.1 3.4.5-2.45 2.4.58 3.38L12 14.2l-3.03 1.58.58-3.38L7.1 10l3.4-.5L12 6.4Z" fill={engrave} fillOpacity="0.5" />
+      <path d="M12 6.4l1.5 3.1 3.4.5-2.45 2.4.58 3.38L12 14.2V6.4Z" fill="#fff" fillOpacity="0.22" />
+      <path d="M6.6 17.1 12 19.6l5.4-2.5" fill="none" stroke={engrave} strokeOpacity="0.28" strokeWidth="0.9" strokeLinecap="round" />
+    </>
   )
 }
 
-export function StarBurstIcon({ className }: IconProps) {
+/** #3 Silver — beveled hex plate with a single sharp chevron. */
+function SilverEmblem({ fill, gloss, engrave }: EmblemProps) {
+  return (
+    <>
+      <path d="M12 1.8 20.9 6.9v10.2L12 22.2 3.1 17.1V6.9L12 1.8Z" fill={fill} />
+      <path d="M12 1.8 20.9 6.9v10.2L12 22.2 3.1 17.1V6.9L12 1.8Z" fill={gloss} />
+      <path
+        d="M12 3.9 19.1 8v8L12 20.1 4.9 16V8L12 3.9Z"
+        fill="none"
+        stroke={engrave}
+        strokeOpacity="0.32"
+        strokeWidth="0.85"
+      />
+      <path d="M6.9 14.4 12 8.4l5.1 6" fill="none" stroke={engrave} strokeOpacity="0.6" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6.9 14.4 12 8.4l5.1 6" fill="none" stroke="#fff" strokeOpacity="0.2" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9.4 17.6h5.2" stroke={engrave} strokeOpacity="0.3" strokeWidth="1.2" strokeLinecap="round" />
+    </>
+  )
+}
+
+/** #4 Bronze — plain kite shield with a flat bar, matte finish. */
+function BronzeEmblem({ fill, gloss, engrave }: EmblemProps) {
+  return (
+    <>
+      <path d="M4.4 4.2h15.2v7.1c0 4.4-3.2 7.6-7.6 10.5-4.4-2.9-7.6-6.1-7.6-10.5V4.2Z" fill={fill} />
+      <path d="M4.4 4.2h15.2v7.1c0 4.4-3.2 7.6-7.6 10.5-4.4-2.9-7.6-6.1-7.6-10.5V4.2Z" fill={gloss} />
+      <path
+        d="M6.4 6.2h11.2v5.1c0 3.4-2.4 6-5.6 8.3-3.2-2.3-5.6-4.9-5.6-8.3V6.2Z"
+        fill="none"
+        stroke={engrave}
+        strokeOpacity="0.3"
+        strokeWidth="0.85"
+      />
+      <path d="M8.4 10.6h7.2" stroke={engrave} strokeOpacity="0.55" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M9.6 14.4h4.8" stroke={engrave} strokeOpacity="0.35" strokeWidth="1.4" strokeLinecap="round" />
+    </>
+  )
+}
+
+/** #5 Iron — heavy forged plate with clipped corners and rivets. */
+function IronEmblem({ fill, gloss, engrave }: EmblemProps) {
+  return (
+    <>
+      <path d="M6.6 3.6h10.8l3 3v10.8l-3 3H6.6l-3-3V6.6l3-3Z" fill={fill} />
+      <path d="M6.6 3.6h10.8l3 3v10.8l-3 3H6.6l-3-3V6.6l3-3Z" fill={gloss} />
+      <path
+        d="M7.4 5.6h9.2l2 2v8.8l-2 2H7.4l-2-2V7.6l2-2Z"
+        fill="none"
+        stroke={engrave}
+        strokeOpacity="0.45"
+        strokeWidth="0.85"
+      />
+      <path d="M8.2 12h7.6" stroke={engrave} strokeOpacity="0.6" strokeWidth="2.4" strokeLinecap="square" />
+      <circle cx="7.2" cy="7.2" r="0.85" fill={engrave} fillOpacity="0.55" />
+      <circle cx="16.8" cy="7.2" r="0.85" fill={engrave} fillOpacity="0.55" />
+      <circle cx="7.2" cy="16.8" r="0.85" fill={engrave} fillOpacity="0.55" />
+      <circle cx="16.8" cy="16.8" r="0.85" fill={engrave} fillOpacity="0.55" />
+    </>
+  )
+}
+
+/** Single source of truth for the rank ladder. */
+export const RANK_TIERS: Record<TierRank, TierDef> = {
+  1: {
+    name: 'Diamond',
+    stops: ['#f4fdff', '#a9e9ff', '#4fb6e8', '#1a6795'],
+    engrave: '#0d3b58',
+    sheen: 0.62,
+    Emblem: DiamondEmblem,
+  },
+  2: {
+    name: 'Gold',
+    stops: ['#fff4c6', '#f6cf5e', '#c98f18', '#7d5208'],
+    engrave: '#4a2e04',
+    sheen: 0.48,
+    Emblem: GoldEmblem,
+  },
+  3: {
+    name: 'Silver',
+    stops: ['#fbfdff', '#dbe2ea', '#9aa6b4', '#5d6875'],
+    engrave: '#333c47',
+    sheen: 0.36,
+    Emblem: SilverEmblem,
+  },
+  4: {
+    name: 'Bronze',
+    stops: ['#eec096', '#c9803c', '#94551d', '#59300b'],
+    engrave: '#381e06',
+    sheen: 0.24,
+    Emblem: BronzeEmblem,
+  },
+  5: {
+    name: 'Iron',
+    stops: ['#8f979e', '#6b737a', '#474e54', '#282d31'],
+    engrave: '#15181a',
+    sheen: 0.12,
+    Emblem: IronEmblem,
+  },
+}
+
+/** Rank emblem for the top five places. */
+export function RankTierIcon({ rank, className }: { rank: TierRank; className?: string }) {
+  const tier = RANK_TIERS[rank]
+  const id = `rank-tier-${rank}`
+  const { Emblem } = tier
+
   return (
     <svg
       className={className}
-      viewBox="0 0 120 120"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden
+      viewBox="0 0 24 24"
+      width="26"
+      height="26"
+      role="img"
+      aria-label={`Rank ${rank} — ${tier.name}`}
     >
       <defs>
-        <radialGradient
-          id="star-burst"
-          cx="0"
-          cy="0"
-          r="1"
-          gradientUnits="userSpaceOnUse"
-          gradientTransform="translate(60 60) rotate(90) scale(56)"
-        >
-          <stop stopColor="#ECEAE6" />
-          <stop offset="1" stopColor="#C8C4BC" stopOpacity="0" />
-        </radialGradient>
+        <linearGradient id={id} x1="5" y1="2" x2="19" y2="22" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor={tier.stops[0]} />
+          <stop offset="34%" stopColor={tier.stops[1]} />
+          <stop offset="70%" stopColor={tier.stops[2]} />
+          <stop offset="100%" stopColor={tier.stops[3]} />
+        </linearGradient>
+        <linearGradient id={`${id}-gloss`} x1="6" y1="2" x2="15" y2="16" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#fff" stopOpacity={tier.sheen} />
+          <stop offset="100%" stopColor="#fff" stopOpacity="0" />
+        </linearGradient>
       </defs>
-      <path
-        d="M60 4l4 20 18-6-10 16 18 6-16 10 6 18-20-4 4 20-16-10-6 18 10 16-18-6 10-16-18 6 4-20-16 10-6-18 10-16-18 6-10-16 18 6-4-20z"
-        fill="url(#star-burst)"
-        opacity="0.35"
-      />
+      <Emblem fill={`url(#${id})`} gloss={`url(#${id}-gloss)`} engrave={tier.engrave} />
     </svg>
   )
 }

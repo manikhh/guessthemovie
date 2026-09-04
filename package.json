@@ -5,22 +5,38 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:full": "vercel dev",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "fetch-clips": "tsx scripts/fetch-clips.ts",
-    "validate-clips": "tsx scripts/validate-clips.ts"
+    "build-clips": "node scripts/build-clips-tmdb.mjs",
+    "build-clips:youtube": "node scripts/build-clips.mjs",
+    "validate-clips": "tsx scripts/validate-clips.ts",
+    "fetch-candidates": "node scripts/fetch-iran-candidates.mjs",
+    "fetch-duel-candidates": "node scripts/fetch-duel-candidates.mjs",
+    "build-duel-clips": "node scripts/build-duel-clips.mjs"
   },
   "devDependencies": {
-    "dotenv": "^17.2.3",
-    "tsx": "^4.21.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^26.4.1",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
     "@vitejs/plugin-react": "^6.1.1",
+    "dotenv": "^17.2.3",
+    "tsx": "^4.21.0",
     "typescript": "~6.0.2",
     "vite": "^8.2.2"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "framer-motion": "^13.2.0",
+    "jose": "^6.2.10",
+    "lucide": "^1.39.0",
+    "lucide-react": "^1.39.0",
+    "mongodb": "^7.6.0",
+    "morphicons": "^1.7.1",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.3"
   }
 }

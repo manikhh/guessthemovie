@@ -1,15 +1,14 @@
-import type { Difficulty, MovieClip } from '../types'
-import clipsData from '../data/clips.json'
+import type { Difficulty } from '../types'
+import titlesData from '../data/titles.json'
 
-export const CLIPS = clipsData as MovieClip[]
+export const TITLE_POOL = titlesData as Record<Difficulty, string[]>
 
-export function getClipsForDifficulty(difficulty: Difficulty): MovieClip[] {
-  return CLIPS.filter((clip) => clip.difficulty === difficulty)
+export function getTitlesForDifficulty(difficulty: Difficulty): string[] {
+  return TITLE_POOL[difficulty] ?? []
 }
 
-/** Ranked queue: medium + hard pool for competitive matches. */
-export function getRankedClips(): MovieClip[] {
-  return CLIPS.filter((clip) => clip.difficulty === 'medium' || clip.difficulty === 'hard')
+export function getPoolSize(difficulty: Difficulty): number {
+  return getTitlesForDifficulty(difficulty).length
 }
 
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = {

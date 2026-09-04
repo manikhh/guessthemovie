@@ -1,64 +1,44 @@
-import { useState } from 'react'
-import type { Difficulty } from './types'
-import { FactoryMark } from './components/FactoryMark'
-import { ModeSelect } from './components/ModeSelect'
-import { GameBoard } from './components/GameBoard'
-import { RankHub } from './components/RankHub'
-import { MovieMatch } from './components/match/MovieMatch'
+import { useEffect } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { AuthProvider } from './hooks/useAuth'
+import { HomePage } from './pages/HomePage'
+import { GamePage } from './pages/GamePage'
+import { LoginPage } from './pages/LoginPage'
+import { SignupPage } from './pages/SignupPage'
+import { LeaderboardPage } from './pages/LeaderboardPage'
+import { MatchPage } from './pages/MatchPage'
+import { loadYouTubeApi } from './lib/youtube'
 
-type Screen =
-  | { view: 'menu' }
-  | { view: 'game'; difficulty: Difficulty; ranked?: false }
-  | { view: 'game'; ranked: true }
-  | { view: 'ranks' }
-  | { view: 'match' }
+const pageMotion = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+  transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] as const },
+}
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>({ view: 'menu' })
-  const compact = screen.view !== 'menu'
+  const location = useLocation()
+
+  useEffect(() => {
+    loadYouTubeApi().catch(() => {})
+  }, [])
 
   return (
-    <div className="app">
-      <header className={`masthead ${compact ? 'is-compact' : ''}`}>
-        <div className="brand">
-          <FactoryMark className="brand-mark" />
-          <div className="brand-lockup">
-            <h1 className="brand-name">Chocolate</h1>
-            <p className="brand-factory">Factory</p>
-            <p className="brand-studios">Game Studios</p>
-          </div>
-        </div>
-        {screen.view === 'menu' && (
-          <p className="masthead-sub">One frame. One guess. How fast can you name it?</p>
-        )}
-      </header>
-
-      <main className="main">
-        {screen.view === 'menu' ? (
-          <ModeSelect
-            onSelect={(difficulty) => setScreen({ view: 'game', difficulty })}
-            onPlayRanked={() => setScreen({ view: 'game', ranked: true })}
-            onOpenRanks={() => setScreen({ view: 'ranks' })}
-            onOpenMatch={() => setScreen({ view: 'match' })}
-          />
-        ) : screen.view === 'ranks' ? (
-          <RankHub onBack={() => setScreen({ view: 'menu' })} />
-        ) : screen.view === 'match' ? (
-          <MovieMatch onExit={() => setScreen({ view: 'menu' })} />
-        ) : screen.ranked ? (
-          <GameBoard key="ranked" ranked onExit={() => setScreen({ view: 'menu' })} />
-        ) : (
-          <GameBoard
-            key={screen.difficulty}
-            difficulty={screen.difficulty}
-            onExit={() => setScreen({ view: 'menu' })}
-          />
-        )}
-      </main>
-
-      <footer className="site-footer">
-        <p className="watermark">by Chocolate Factory</p>
-      </footer>
-    </div>
+    <AuthProvider>
+      <AnimatePresence mode="wait">
+        <motion.div key={location.pathname} style={{ minHeight: '100dvh' }} {...pageMotion}>
+          <Routes location={location}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
+            <Route path="/match" element={<MatchPage />} />
+            <Route path="/play/:difficulty" element={<GamePage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </motion.div>
+      </AnimatePresence>
+    </AuthProvider>
   )
 }

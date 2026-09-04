@@ -1,4 +1,5 @@
 import { checkGuess } from '../guess'
+import type { MovieClip } from '../../types'
 import { scoreAnswer } from './scoring'
 import { getMovieById, matchPreviewSec, pickMatchMovies } from './movies'
 import {
@@ -131,7 +132,7 @@ function resolveRound(state: MatchState, at = nowMs()): MatchState {
       graded[player.id] = null
       return player
     }
-    const correct = checkGuess(raw.text, movie)
+    const correct = checkGuess(raw.text, movie as MovieClip)
     const points = scoreAnswer(correct, raw.submittedAt, started)
     graded[player.id] = {
       text: raw.text,

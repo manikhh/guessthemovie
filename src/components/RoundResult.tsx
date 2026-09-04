@@ -1,91 +1,105 @@
-import type { MovieClip, RoundState } from '../types'
-import { CLIP_DURATIONS, formatDuration, scoreForLevel } from '../lib/game'
-import { rankChangeLabel, type RankChange } from '../lib/rank'
+import type { ClipReveal, PublicClip, RoundState } from '../types'
+import {
+  CLIP_DURATIONS,
+  formatDuration,
+  MAX_LEVELS,
+  SKIP_PENALTY,
+  WRONG_GUESS_PENALTY,
+  scoreRound,
+} from '../lib/game'
+import { ExternalLink, SkipForward } from './icons'
 
 interface RoundResultProps {
   round: RoundState
-  movie: MovieClip
+  movie: PublicClip & Partial<ClipReveal>
+  modeComplete?: boolean
   onNext: () => void
-  rankChange?: RankChange | null
-  /** Win celebration just played — slide result in gently. */
-  animateIn?: boolean
+  onDone?: () => void
+  onPrefetchNext?: () => void
+  loadingNext?: boolean
+  scorePending?: boolean
+  scoreError?: string | null
+  onRetryScore?: () => void
+}
+
+function formatPoints(delta: number): string {
+  if (delta > 0) return `+${delta}`
+  return String(delta)
 }
 
 export function RoundResult({
   round,
   movie,
+  modeComplete,
   onNext,
-  rankChange,
-  animateIn = false,
+  onDone,
+  onPrefetchNext,
+  loadingNext,
+  scorePending,
+  scoreError,
+  onRetryScore,
 }: RoundResultProps) {
   const won = round.won
   const level = round.wonAtLevel ?? 0
-  const points = scoreForLevel(level)
-
-  if (won) {
-    return (
-      <section className={`result is-won ${animateIn ? 'result-enter' : ''}`}>
-        <div className="result-prize-card">
-          <span className="result-prize-badge">+{points} pts</span>
-          <h2 className="result-title">{movie.title}</h2>
-          <p className="result-year">{movie.year}</p>
-          <p className="result-detail">
-            Nailed it from a {formatDuration(CLIP_DURATIONS[level]!)} clip
-          </p>
-          {rankChange && <RankLine change={rankChange} />}
-        </div>
-
-        <div className="result-actions">
-          <button type="button" className="btn btn-primary btn-lg" onClick={onNext} autoFocus>
-            Next movie
-          </button>
-          <a
-            className="btn btn-ghost btn-lg"
-            href={`https://www.youtube.com/watch?v=${movie.youtubeId}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Watch trailer
-          </a>
-        </div>
-      </section>
-    )
-  }
+  const netPoints = scoreRound(round)
+  const gaveUp = !won && round.guesses.length < MAX_LEVELS
 
   return (
-    <section className="result is-lost">
-      <p className="result-verdict">Out of guesses</p>
-      <h2 className="result-title">{movie.title}</h2>
-      <p className="result-year">{movie.year}</p>
-      <p className="result-detail">No points this round</p>
-      {rankChange && <RankLine change={rankChange} />}
+    <section className={`result ${won ? 'is-won' : 'is-lost'}`}>
+      <p className="result-verdict">
+        {won ? '[CORRECT]' : gaveUp ? '[GAVE UP]' : '[OUT OF GUESSES]'}
+      </p>
+      <p className={`result-prize ${netPoints < 0 ? 'is-negative' : ''}`}>{formatPoints(netPoints)}</p>
+      <h2 className="result-title">{movie.title ?? '…'}</h2>
+      <p className="result-year">{movie.year ?? ''}</p>
+      <p className="result-detail">
+        {won
+          ? `From a ${formatDuration(CLIP_DURATIONS[level]!)} clip · −${WRONG_GUESS_PENALTY} per wrong guess`
+          : gaveUp
+            ? `Skip −${SKIP_PENALTY}${round.guesses.length ? ` · ${round.guesses.length} wrong · −${WRONG_GUESS_PENALTY} each` : ''}`
+            : `${round.guesses.length} wrong guess${round.guesses.length === 1 ? '' : 'es'} · −${WRONG_GUESS_PENALTY} each`}
+      </p>
+      {modeComplete ? <p className="result-detail">Mode cleared — locked</p> : null}
 
       <div className="result-actions">
-        <button type="button" className="btn btn-primary btn-lg" onClick={onNext} autoFocus>
-          Next movie
-        </button>
+        {scoreError ? (
+          <button type="button" className="btn btn-primary btn-lg" onClick={onRetryScore} autoFocus>
+            Retry save
+          </button>
+        ) : modeComplete ? (
+          <button
+            type="button"
+            className="btn btn-primary btn-lg"
+            onClick={onDone}
+            disabled={scorePending}
+            autoFocus
+          >
+            {scorePending ? 'Saving…' : 'Back to modes'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-primary btn-lg"
+            onClick={onNext}
+            onMouseEnter={onPrefetchNext}
+            onFocus={onPrefetchNext}
+            disabled={loadingNext || scorePending}
+            autoFocus
+          >
+            {loadingNext ? 'Loading…' : scorePending ? 'Saving…' : 'Next'}
+            <SkipForward size={16} strokeWidth={1.5} absoluteStrokeWidth aria-hidden />
+          </button>
+        )}
         <a
-          className="btn btn-ghost btn-lg"
+          className="btn btn-outline btn-lg"
           href={`https://www.youtube.com/watch?v=${movie.youtubeId}`}
           target="_blank"
           rel="noreferrer"
         >
-          Watch trailer
+          Trailer
+          <ExternalLink size={16} strokeWidth={1.5} absoluteStrokeWidth aria-hidden />
         </a>
       </div>
     </section>
-  )
-}
-
-function RankLine({ change }: { change: RankChange }) {
-  const rp =
-    change.kind === 'placement' || change.kind === 'placed'
-      ? rankChangeLabel(change.kind)
-      : `${change.delta > 0 ? '+' : ''}${change.delta} RP`
-
-  return (
-    <p className={`result-rank result-rank-${change.kind}`}>
-      {change.after.name} · {rp}
-    </p>
   )
 }

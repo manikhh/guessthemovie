@@ -13,6 +13,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { spawnSync } from 'node:child_process'
 import { MOVIES, type MovieSeed } from './movies'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -49,7 +50,7 @@ function decodeJsonString(s: string): string {
   }
 }
 
-function normalize(text: string): string {
+function normalizeLatin(text: string): string {
   return text
     .toLowerCase()
     .normalize('NFD')
@@ -59,8 +60,27 @@ function normalize(text: string): string {
     .trim()
 }
 
+function hasPersian(text: string): boolean {
+  return /[\u0600-\u06ff]/.test(text)
+}
+
+function normalizePersian(text: string): string {
+  return text
+    .replace(/[\u064b-\u065f\u0670]/g, '')
+    .replace(/\u200c/g, ' ')
+    .replace(/[؟،؛!.:«»()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 function slugify(title: string, year: number): string {
-  return `${normalize(title).replace(/\s+/g, '-')}-${year}`
+  const base = title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+  return `${base || 'film'}-${year}`
 }
 
 /** Single serialised fetch point so we never burst requests at YouTube. */
@@ -140,50 +160,80 @@ async function inspectVideo(videoId: string): Promise<VideoInfo | null> {
   }
 }
 
+function isTrailerTitle(title: string): boolean {
+  if (/\b(trailer|teaser)\b/i.test(title)) return true
+  return /تریلر|تیزر/.test(title)
+}
+
 /** The video title must name the film and look like an actual trailer. */
 function titleMatches(movie: MovieSeed, videoTitle: string): boolean {
-  const v = normalize(videoTitle)
-  if (!/\b(trailer|teaser)\b/.test(v)) return false
+  if (!isTrailerTitle(videoTitle)) return false
+
+  const vLatin = normalizeLatin(videoTitle)
+  const vPersian = normalizePersian(videoTitle)
 
   const banned = ['reaction', 'review', 'breakdown', 'explained', 'behind the scenes', 'making of']
-  if (banned.some((b) => v.includes(b))) return false
+  if (banned.some((b) => vLatin.includes(b))) return false
 
-  const names = [movie.title, ...(movie.aliases ?? [])].map(normalize)
-  return names.some((n) => n.length >= 3 && v.includes(n))
+  const names = [movie.title, ...(movie.aliases ?? [])]
+  return names.some((name) => {
+    if (hasPersian(name)) {
+      const n = normalizePersian(name)
+      return n.length >= 2 && vPersian.includes(n)
+    }
+    const n = normalizeLatin(name)
+    return n.length >= 3 && vLatin.includes(n)
+  })
+}
+
+function searchQueries(movie: MovieSeed): string[] {
+  const queries = [`${movie.title} ${movie.year} official trailer`]
+  const persian = movie.aliases?.find(hasPersian)
+  if (persian) {
+    queries.push(`${persian} تریلر`)
+    queries.push(`${persian} ${movie.year} تریلر رسمی`)
+  }
+  return queries
 }
 
 async function resolveMovie(movie: MovieSeed): Promise<Clip | null> {
-  const candidates = await searchCandidates(`${movie.title} ${movie.year} official trailer`)
+  const seen = new Set<string>()
 
-  for (const cand of candidates.slice(0, CANDIDATES_PER_MOVIE)) {
-    if (!titleMatches(movie, cand.title)) continue
+  for (const query of searchQueries(movie)) {
+    const candidates = await searchCandidates(query)
 
-    const info = await inspectVideo(cand.id)
-    if (!info || !info.ok || !info.embeddable) continue
-    if (info.duration < MIN_DURATION || info.duration > MAX_DURATION) continue
-    if (!titleMatches(movie, info.title)) continue
+    for (const cand of candidates) {
+      if (seen.has(cand.id)) continue
+      seen.add(cand.id)
+      if (!titleMatches(movie, cand.title)) continue
 
-    // Start ~35% in: past the studio logos, before the closing title card.
-    const startSec = Math.max(12, Math.min(Math.round(info.duration * 0.35), info.duration - 25))
+      const info = await inspectVideo(cand.id)
+      if (!info || !info.ok || !info.embeddable) continue
+      if (info.duration < MIN_DURATION || info.duration > MAX_DURATION) continue
+      if (!titleMatches(movie, info.title)) continue
 
-    return {
-      id: slugify(movie.title, movie.year),
-      title: movie.title,
-      year: movie.year,
-      difficulty: movie.difficulty,
-      aliases: movie.aliases ?? [],
-      youtubeId: cand.id,
-      startSec,
-      durationSec: info.duration,
-      channel: info.channel,
+      const startSec = Math.max(12, Math.min(Math.round(info.duration * 0.35), info.duration - 25))
+
+      return {
+        id: slugify(movie.title, movie.year),
+        title: movie.title,
+        year: movie.year,
+        difficulty: movie.difficulty,
+        aliases: movie.aliases ?? [],
+        youtubeId: cand.id,
+        startSec,
+        durationSec: info.duration,
+        channel: info.channel,
+      }
     }
   }
   return null
 }
 
-// Resume: keep clips already resolved in a previous run.
+// Fresh run for the Iranian pool — drop any leftover Hollywood clips.
+const movieIds = new Set(MOVIES.map((m) => slugify(m.title, m.year)))
 const existing: Clip[] = existsSync(OUT_PATH)
-  ? (JSON.parse(readFileSync(OUT_PATH, 'utf8')) as Clip[])
+  ? (JSON.parse(readFileSync(OUT_PATH, 'utf8')) as Clip[]).filter((c) => movieIds.has(c.id))
   : []
 const byId = new Map(existing.map((c) => [c.id, c]))
 
@@ -216,3 +266,4 @@ console.log(`\nWrote ${clips.length} clips`)
 console.log(`  easy   ${counts.easy}`)
 console.log(`  medium ${counts.medium}`)
 console.log(`  hard   ${counts.hard}`)
+spawnSync(process.execPath, [resolve(__dirname, 'write-titles.mjs')], { stdio: 'inherit' })

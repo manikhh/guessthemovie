@@ -3,30 +3,30 @@ import type { SessionStats } from '../types'
 interface StatsBarProps {
   stats: SessionStats
   best: number
+  watched: number
+  poolSize: number
+  totalPoints?: number | null
 }
 
-export function StatsBar({ stats, best }: StatsBarProps) {
+export function StatsBar({ stats, best, watched, poolSize, totalPoints }: StatsBarProps) {
+  const watchedLabel = `${watched} of ${poolSize} watched`
+
   return (
-    <dl className="stats">
-      <div className="stat">
-        <dt>Score</dt>
-        <dd>{stats.score}</dd>
-      </div>
-      <div className="stat">
-        <dt>Streak</dt>
-        <dd>{stats.streak}</dd>
-      </div>
-      <div className="stat">
-        <dt>Solved</dt>
-        <dd>
-          {stats.solved}
-          <span className="stat-sub">/{stats.rounds}</span>
-        </dd>
-      </div>
-      <div className="stat">
-        <dt>Best</dt>
-        <dd>{Math.max(best, stats.score)}</dd>
-      </div>
+    <dl className="stat-inline">
+      <dt>Run</dt>
+      <dd>{stats.score}</dd>
+      <dt>Best</dt>
+      <dd>{Math.max(best, stats.score)}</dd>
+      <dt>Seen</dt>
+      <dd title={watchedLabel} aria-label={watchedLabel}>
+        {watched}/{poolSize}
+      </dd>
+      {totalPoints != null && (
+        <>
+          <dt>Total</dt>
+          <dd>{totalPoints}</dd>
+        </>
+      )}
     </dl>
   )
 }

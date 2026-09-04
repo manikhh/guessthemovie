@@ -1,12 +1,10 @@
+import { useNavigate } from 'react-router-dom'
 import { MatchArena } from './MatchArena'
 import { MatchLobby } from './MatchLobby'
 import { useMatchSession } from '../../hooks/useMatchSession'
 
-interface MovieMatchProps {
-  onExit: () => void
-}
-
-export function MovieMatch({ onExit }: MovieMatchProps) {
+export function MovieMatch() {
+  const navigate = useNavigate()
   const session = useMatchSession()
 
   if (!session.view) {
@@ -16,7 +14,7 @@ export function MovieMatch({ onExit }: MovieMatchProps) {
         onCreate={session.createRoom}
         onJoin={session.joinRoom}
         onVsBot={session.createVsBot}
-        onBack={onExit}
+        onBack={() => navigate('/')}
       />
     )
   }

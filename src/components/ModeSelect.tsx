@@ -1,89 +1,90 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import type { Difficulty } from '../types'
-import { DIFFICULTY_HINTS, DIFFICULTY_LABELS, getClipsForDifficulty, getRankedClips } from '../lib/difficulty'
+import { DIFFICULTY_HINTS, DIFFICULTY_LABELS, getPoolSize } from '../lib/difficulty'
+import { fetchModesProgress, type ModeProgress } from '../lib/auth'
 import { loadBest } from '../lib/game'
-import { findClan, loadProfile, rankOf, yourPlace } from '../lib/rank'
-import { RankBadge } from './RankBadge'
-
-interface ModeSelectProps {
-  onSelect: (difficulty: Difficulty) => void
-  onPlayRanked: () => void
-  onOpenRanks: () => void
-  onOpenMatch: () => void
-}
+import { useAuth } from '../hooks/useAuth'
 
 const MODES: Difficulty[] = ['easy', 'medium', 'hard']
 
-export function ModeSelect({ onSelect, onPlayRanked, onOpenRanks, onOpenMatch }: ModeSelectProps) {
-  const you = loadProfile()
-  const rank = rankOf(you)
-  const clan = findClan(you.clanId)
-  const rankedPlace = yourPlace('ranked')
-  const rankedCount = getRankedClips().length
+export function ModeSelect() {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const [progress, setProgress] = useState<Partial<Record<Difficulty, ModeProgress>>>({})
+
+  useEffect(() => {
+    if (!user) {
+      setProgress({})
+      return
+    }
+    let cancelled = false
+    void fetchModesProgress()
+      .then((modes) => {
+        if (cancelled) return
+        const next: Partial<Record<Difficulty, ModeProgress>> = {}
+        for (const mode of modes) next[mode.difficulty] = mode
+        setProgress(next)
+      })
+      .catch(() => {
+        if (!cancelled) setProgress({})
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
 
   return (
     <div className="menu">
-      <p className="menu-intro">
-        Step into the factory. A trailer flashes for a fifth of a second. Name the film. Need
-        longer? Take it — but every extra second costs you points.
-      </p>
+      <p className="menu-kicker">Select difficulty</p>
 
-      <button type="button" className="rank-entry" onClick={onOpenRanks}>
-        <RankBadge rank={rank} size="sm" />
-        <span className="rank-entry-copy">
-          <strong>{rank.name}</strong>
-          <em>
-            {you.placementsLeft > 0
-              ? `${5 - you.placementsLeft}/5 placements`
-              : `#${rankedPlace} · ${you.rp} RP`}
-            {clan ? ` · [${clan.tag}]` : ''}
-          </em>
-        </span>
-        <span className="rank-entry-go">Board</span>
-      </button>
-
-      <button type="button" className="ranked-play match-mode-btn" onClick={onOpenMatch}>
+      <button type="button" className="ranked-play match-mode-btn" onClick={() => navigate('/match')}>
         <span className="ranked-play-kicker">Multiplayer</span>
         <span className="ranked-play-title">1v1 Movies</span>
         <span className="ranked-play-hint">10 clips · same round · live scoreboard</span>
       </button>
 
-      <button
-        type="button"
-        className="ranked-play"
-        onClick={onPlayRanked}
-        disabled={rankedCount === 0}
-      >
-        <span className="ranked-play-kicker">
-          {you.placementsLeft > 0 ? 'Placement match' : 'Ranked match'}
-        </span>
-        <span className="ranked-play-title">Play Ranked</span>
-        <span className="ranked-play-hint">
-          Medium + Hard pool · win RP, lose RP · {rankedCount} films
-        </span>
-      </button>
-
-      <p className="menu-section-label">Casual</p>
-
       <div className="menu-grid">
-        {MODES.map((mode) => {
-          const count = getClipsForDifficulty(mode).length
+        {MODES.map((mode, i) => {
+          const count = getPoolSize(mode)
           const best = loadBest(mode)
+          const modeProgress = progress[mode]
+          const completed = modeProgress?.completed === true
+          const locked = count === 0 || completed
 
           return (
-            <button
+            <motion.button
               key={mode}
               type="button"
-              className={`menu-card menu-card-${mode}`}
-              onClick={() => onSelect(mode)}
-              disabled={count === 0}
+              className={`menu-row${completed ? ' is-cleared' : ''}`}
+              onClick={() => navigate(`/play/${mode}`)}
+              disabled={locked}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.25,
+                delay: i * 0.04,
+                ease: [0.22, 1, 0.36, 1],
+              }}
             >
-              <span className="menu-card-head">
-                <span className="menu-card-title">{DIFFICULTY_LABELS[mode]}</span>
-                <span className="menu-card-count">{count} films</span>
+              <span className="menu-row-copy">
+                <span className="menu-row-title">{DIFFICULTY_LABELS[mode]}</span>
+                <span className="menu-row-hint">
+                  {completed ? 'Cleared — locked' : DIFFICULTY_HINTS[mode]}
+                </span>
               </span>
-              <span className="menu-card-hint">{DIFFICULTY_HINTS[mode]}</span>
-              {best > 0 && <span className="menu-card-best">Best score {best}</span>}
-            </button>
+              <span className="menu-row-meta">
+                <span>
+                  {completed
+                    ? 'Cleared'
+                    : modeProgress
+                      ? `${modeProgress.watched}/${modeProgress.poolSize} films`
+                      : `${count} films`}
+                </span>
+                {best > 0 && <span className="menu-row-best">Best {best}</span>}
+              </span>
+            </motion.button>
           )
         })}
       </div>

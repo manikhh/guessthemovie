@@ -27,7 +27,7 @@ export function FactoryMark({ className }: FactoryMarkProps) {
       <path
         className="factory-door"
         d="M62 136v-20c0-10 8-16 16-16s16 6 16 16v20H62Z"
-        fill="var(--bg)"
+        fill="var(--black)"
       />
       <path
         className="factory-drip"
