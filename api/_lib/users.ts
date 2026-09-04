@@ -81,6 +81,19 @@ export async function getLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
   }))
 }
 
+/** 1-based rank matching getLeaderboard sort: points desc, username asc. */
+export async function getUserRank(user: UserDoc): Promise<number> {
+  const db = await getDb()
+  const points = user.points ?? 0
+  const ahead = await db.collection<UserDoc>('users').countDocuments({
+    $or: [
+      { points: { $gt: points } },
+      { points, username: { $lt: user.username } },
+    ],
+  })
+  return ahead + 1
+}
+
 export function publicUser(user: UserDoc) {
   return {
     id: user._id.toString(),

@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { CLIP_DURATIONS } from '../lib/game'
 import {
   createPlayer,
   loadYouTubeApi,
@@ -30,11 +31,26 @@ interface YouTubePlayerProps {
 const BLOCKED_MSG =
   'YouTube is blocked on this browser. Disable your ad blocker for this site, or try Chrome/Safari without extensions.'
 
+/** Longest playable clip — warm with this so short levels don't ENDED mid-buffer. */
+const LONGEST_CLIP = CLIP_DURATIONS[CLIP_DURATIONS.length - 1] ?? 5
+/** Keep YT's hard stop slightly after our timer so we veil first, then YT stops. */
+const END_PAD_SEC = 0.85
+
 function preferFastQuality(player: YtPlayer) {
   try {
     player.setPlaybackQuality('small')
   } catch {
     /* quality hint not always available */
+  }
+}
+
+function loadOpts(videoId: string, startSec: number, playSec: number) {
+  const startSeconds = Math.max(0, startSec)
+  return {
+    videoId,
+    startSeconds,
+    // YT end-screen / suggestions only appear on real ENDED; stop before trailer end.
+    endSeconds: startSeconds + Math.max(playSec, 0.05) + END_PAD_SEC,
   }
 }
 
@@ -50,6 +66,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
     const warmingRef = useRef(false)
     const primedRef = useRef(false)
     const awaitingPlayRef = useRef(false)
+    const rearmAttemptsRef = useRef(0)
     const stopAtRef = useRef(0)
     const rafRef = useRef<number | null>(null)
     const hardTimerRef = useRef<number | null>(null)
@@ -131,6 +148,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
 
     function finishWarm() {
       warmingRef.current = false
+      rearmAttemptsRef.current = 0
       setVeiled(true)
       // Pause in place — seek here would throw away the buffer we just built.
       parkAtStart(false)
@@ -147,6 +165,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       playingRef.current = false
       awaitingPlayRef.current = false
       warmingRef.current = true
+      rearmAttemptsRef.current = 0
       setPrimed(false)
       setVeiled(true)
       setStatus('loading')
@@ -155,22 +174,42 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       try {
         preferFastQuality(player)
         player.mute()
-        player.loadVideoById({
-          videoId: videoIdRef.current,
-          startSeconds: startSecRef.current,
-        })
+        // Warm with longest window so unlocking longer clips still has endSeconds headroom.
+        player.loadVideoById(loadOpts(videoIdRef.current, startSecRef.current, LONGEST_CLIP))
       } catch {
         warmingRef.current = false
         setPrimed(false)
       }
     }
 
-    function stopClip() {
-      clearTimers()
+    function stopClip(rearm = false) {
+      // Veil first so YT end-screen / suggestions never flash.
       setVeiled(true)
+      clearTimers()
       playingRef.current = false
       awaitingPlayRef.current = false
       onPlayingChangeRef.current?.(false)
+
+      // After ENDED, seek alone often leaves the suggestions UI stuck — reload the warm window.
+      // Cap attempts so a bad startSec past trailer end cannot loop forever.
+      if (rearm && rearmAttemptsRef.current < 1 && playerRef.current && apiReadyRef.current) {
+        rearmAttemptsRef.current += 1
+        warmingRef.current = true
+        setPrimed(false)
+        setStatus('loading')
+        try {
+          preferFastQuality(playerRef.current)
+          playerRef.current.mute()
+          playerRef.current.loadVideoById(
+            loadOpts(videoIdRef.current, startSecRef.current, LONGEST_CLIP),
+          )
+          return
+        } catch {
+          warmingRef.current = false
+        }
+      }
+
+      rearmAttemptsRef.current = 0
       // Rewind while the player is guessing so the next Play is hot again.
       parkAtStart(true)
       setPrimed(true)
@@ -205,10 +244,9 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
         try {
           preferFastQuality(player)
           applyAudibleVolume(player)
-          player.loadVideoById({
-            videoId: videoIdRef.current,
-            startSeconds: startSecRef.current,
-          })
+          player.loadVideoById(
+            loadOpts(videoIdRef.current, startSecRef.current, durationRef.current),
+          )
         } catch {
           awaitingPlayRef.current = false
           onErrorChangeRef.current?.('Playback failed')
@@ -225,6 +263,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       try {
         preferFastQuality(player)
         // Instant path: buffer already hot — no reload.
+        // endSeconds from warm (longest clip) still caps YT before trailer end.
         applyAudibleVolume(player)
         const t = (() => {
           try {
@@ -261,10 +300,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
         if (!apiReadyRef.current || playingRef.current || awaitingPlayRef.current) return
         try {
           playerRef.current?.mute()
-          playerRef.current?.loadVideoById({
-            videoId: nextVideoId,
-            startSeconds: nextStartSec,
-          })
+          playerRef.current?.loadVideoById(loadOpts(nextVideoId, nextStartSec, LONGEST_CLIP))
         } catch {
           /* ignore */
         }
@@ -281,6 +317,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
 
     useEffect(() => {
       let destroyed = false
+      const initial = loadOpts(videoIdRef.current, startSecRef.current, LONGEST_CLIP)
 
       loadYouTubeApi()
         .then(() => {
@@ -289,7 +326,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
           playerRef.current = createPlayer(containerRef.current, {
             height: '100%',
             width: '100%',
-            videoId: videoIdRef.current,
+            videoId: initial.videoId,
             playerVars: {
               // Mute-autoplay starts buffering immediately on create.
               autoplay: 1,
@@ -303,7 +340,8 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
               playsinline: 1,
               rel: 0,
               cc_load_policy: 0,
-              start: Math.max(0, Math.floor(startSecRef.current)),
+              start: Math.max(0, Math.floor(initial.startSeconds)),
+              end: Math.max(1, Math.ceil(initial.endSeconds)),
               origin: window.location.origin,
             },
             events: {
@@ -320,10 +358,9 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
                   event.target.playVideo()
                 } catch {
                   try {
-                    event.target.loadVideoById({
-                      videoId: videoIdRef.current,
-                      startSeconds: startSecRef.current,
-                    })
+                    event.target.loadVideoById(
+                      loadOpts(videoIdRef.current, startSecRef.current, LONGEST_CLIP),
+                    )
                   } catch {
                     /* ignore */
                   }
@@ -345,6 +382,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
                     awaitingPlayRef.current = false
                     playingRef.current = true
                     primedRef.current = true
+                    rearmAttemptsRef.current = 0
                     setVeiled(false)
                     onPlayingChangeRef.current?.(true)
                     stopAtRef.current = performance.now() + durationRef.current * 1000
@@ -373,7 +411,8 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
                 }
 
                 if (e.data === YtPlayerState.ENDED) {
-                  stopClip()
+                  // Hard stop from endSeconds (or trailer end) — veil + re-cue so suggestions die.
+                  stopClip(true)
                 }
               },
               onError: () => {

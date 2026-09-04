@@ -8,15 +8,19 @@ import { useAuth } from '../hooks/useAuth'
 export function LeaderboardPage() {
   const { user, refresh } = useAuth()
   const [players, setPlayers] = useState<LeaderboardPlayer[]>([])
+  const [me, setMe] = useState<LeaderboardPlayer | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
 
-    void Promise.all([fetchLeaderboard(50), refresh()])
-      .then(([rows]) => {
-        if (!cancelled) setPlayers(rows)
+    void Promise.all([fetchLeaderboard(10), refresh()])
+      .then(([board]) => {
+        if (!cancelled) {
+          setPlayers(board.players)
+          setMe(board.me)
+        }
       })
       .catch((err) => {
         if (!cancelled) {
@@ -32,10 +36,7 @@ export function LeaderboardPage() {
     }
   }, [refresh])
 
-  const youFromBoard = user
-    ? players.find((player) => player.username.toLowerCase() === user.username.toLowerCase())
-    : null
-  const youPoints = youFromBoard?.points ?? user?.points
+  const youPoints = me?.points ?? user?.points
 
   return (
     <div className="app is-lobby auth-page">
@@ -44,7 +45,7 @@ export function LeaderboardPage() {
           <FactoryMark className="brand-mark" />
           <div className="brand-lockup">
             <h1 className="brand-name">Leaderboard</h1>
-            <p className="masthead-sub">Top players by total points.</p>
+            <p className="masthead-sub">Top 10 by total points.</p>
           </div>
         </div>
       </header>
@@ -53,7 +54,7 @@ export function LeaderboardPage() {
         {user && youPoints != null && (
           <p className="leaderboard-you">
             You · <strong>{youPoints}</strong> pts
-            {youFromBoard && <span> · rank {youFromBoard.rank}</span>}
+            {me && <span> · rank {me.rank}</span>}
           </p>
         )}
 

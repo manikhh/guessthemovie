@@ -4,11 +4,11 @@ import { fileURLToPath } from 'node:url'
 import { CLIP_DURATIONS } from '../../src/lib/game.js'
 import type { Difficulty, MovieClip } from '../../src/types.js'
 
-const HEAD_SEC = 10
-const TAIL_SEC = 10
+const HEAD_SEC = 20
+const TAIL_SEC = 20
 const LONGEST_CLIP = CLIP_DURATIONS[CLIP_DURATIONS.length - 1] ?? 5
 
-/** Pick a start inside the trailer, skipping the first/last 10s and leaving room for the longest clip. */
+/** Pick a start inside the trailer, skipping the first/last 20s and leaving room for the longest clip. */
 export function randomStartSec(trailerDuration: number): number {
   const min = HEAD_SEC
   const max = trailerDuration - TAIL_SEC - LONGEST_CLIP

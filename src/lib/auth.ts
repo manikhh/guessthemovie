@@ -26,7 +26,13 @@ type ScoreResponse = {
 
 type LeaderboardResponse = {
   players?: LeaderboardPlayer[]
+  me?: LeaderboardPlayer | null
   error?: string
+}
+
+export type LeaderboardData = {
+  players: LeaderboardPlayer[]
+  me: LeaderboardPlayer | null
 }
 
 export type PlayView = {
@@ -220,8 +226,11 @@ export async function submitPlayAction(input: {
   }
 }
 
-export async function fetchLeaderboard(limit = 50): Promise<LeaderboardPlayer[]> {
+export async function fetchLeaderboard(limit = 10): Promise<LeaderboardData> {
   const res = await fetch(`/api/leaderboard?limit=${limit}`, { credentials: 'include' })
   const data = await parseJsonResponse<LeaderboardResponse>(res)
-  return data.players ?? []
+  return {
+    players: data.players ?? [],
+    me: data.me ?? null,
+  }
 }

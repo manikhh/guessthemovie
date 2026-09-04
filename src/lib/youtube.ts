@@ -21,11 +21,15 @@ export type YtPlayerState = (typeof YtPlayerState)[keyof typeof YtPlayerState]
 
 export interface YtPlayer {
   loadVideoById(
-    videoIdOrOptions: string | { videoId: string; startSeconds?: number },
+    videoIdOrOptions:
+      | string
+      | { videoId: string; startSeconds?: number; endSeconds?: number },
     startSeconds?: number,
   ): void
   cueVideoById(
-    videoIdOrOptions: string | { videoId: string; startSeconds?: number },
+    videoIdOrOptions:
+      | string
+      | { videoId: string; startSeconds?: number; endSeconds?: number },
     startSeconds?: number,
   ): void
   playVideo(): void
