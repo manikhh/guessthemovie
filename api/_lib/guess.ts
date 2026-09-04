@@ -1,6 +1,6 @@
-import type { MovieClip } from '../../src/types'
-
 const NOISE_WORDS = new Set(['the', 'a', 'an'])
+
+type GuessableClip = { title: string; aliases: string[] }
 
 function normalize(text: string): string {
   return text
@@ -42,7 +42,7 @@ function closeEnough(guess: string, target: string): boolean {
   return levenshtein(guess, target) <= tolerance
 }
 
-export function checkGuess(guess: string, clip: MovieClip): boolean {
+export function checkGuess(guess: string, clip: GuessableClip): boolean {
   const g = canonical(guess)
   if (!g) return false
 

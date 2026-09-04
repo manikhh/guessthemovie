@@ -1717,16 +1717,64 @@ input {
   background: var(--accent-subtle);
 }
 
-.leaderboard-row.is-first {
-  border-color: rgba(240, 193, 74, 0.45);
+.leaderboard-row.is-gem-1 {
+  border-color: rgba(154, 178, 204, 0.5);
   background:
-    radial-gradient(120% 140% at 0% 50%, rgba(240, 193, 74, 0.14), transparent 55%),
+    radial-gradient(120% 140% at 0% 50%, rgba(201, 217, 234, 0.18), transparent 55%),
     var(--surface);
-  box-shadow: 0 0 0 1px rgba(240, 193, 74, 0.08), 0 8px 24px rgba(201, 137, 26, 0.08);
+  box-shadow: 0 0 0 1px rgba(154, 178, 204, 0.1), 0 8px 24px rgba(74, 96, 120, 0.08);
 }
 
-.leaderboard-row.is-first.is-you {
-  border-color: rgba(240, 193, 74, 0.65);
+.leaderboard-row.is-gem-2 {
+  border-color: rgba(224, 69, 95, 0.4);
+  background:
+    radial-gradient(120% 140% at 0% 50%, rgba(224, 69, 95, 0.12), transparent 55%),
+    var(--surface);
+  box-shadow: 0 0 0 1px rgba(224, 69, 95, 0.08), 0 8px 24px rgba(176, 24, 50, 0.08);
+}
+
+.leaderboard-row.is-gem-3 {
+  border-color: rgba(61, 111, 212, 0.4);
+  background:
+    radial-gradient(120% 140% at 0% 50%, rgba(61, 111, 212, 0.12), transparent 55%),
+    var(--surface);
+  box-shadow: 0 0 0 1px rgba(61, 111, 212, 0.08), 0 8px 24px rgba(30, 74, 168, 0.08);
+}
+
+.leaderboard-row.is-gem-4 {
+  border-color: rgba(45, 184, 106, 0.4);
+  background:
+    radial-gradient(120% 140% at 0% 50%, rgba(45, 184, 106, 0.12), transparent 55%),
+    var(--surface);
+  box-shadow: 0 0 0 1px rgba(45, 184, 106, 0.08), 0 8px 24px rgba(22, 138, 72, 0.08);
+}
+
+.leaderboard-row.is-gem-5 {
+  border-color: rgba(139, 92, 246, 0.4);
+  background:
+    radial-gradient(120% 140% at 0% 50%, rgba(139, 92, 246, 0.12), transparent 55%),
+    var(--surface);
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.08), 0 8px 24px rgba(109, 63, 199, 0.08);
+}
+
+.leaderboard-row.is-gem-1.is-you {
+  border-color: rgba(154, 178, 204, 0.7);
+}
+
+.leaderboard-row.is-gem-2.is-you {
+  border-color: rgba(224, 69, 95, 0.65);
+}
+
+.leaderboard-row.is-gem-3.is-you {
+  border-color: rgba(61, 111, 212, 0.65);
+}
+
+.leaderboard-row.is-gem-4.is-you {
+  border-color: rgba(45, 184, 106, 0.65);
+}
+
+.leaderboard-row.is-gem-5.is-you {
+  border-color: rgba(139, 92, 246, 0.65);
 }
 
 .leaderboard-rank {
@@ -1741,7 +1789,26 @@ input {
 
 .leaderboard-crown {
   display: block;
-  filter: drop-shadow(0 2px 6px rgba(201, 137, 26, 0.45));
+}
+
+.leaderboard-row.is-gem-1 .leaderboard-crown {
+  filter: drop-shadow(0 2px 6px rgba(122, 147, 176, 0.5));
+}
+
+.leaderboard-row.is-gem-2 .leaderboard-crown {
+  filter: drop-shadow(0 2px 6px rgba(176, 24, 50, 0.45));
+}
+
+.leaderboard-row.is-gem-3 .leaderboard-crown {
+  filter: drop-shadow(0 2px 6px rgba(30, 74, 168, 0.45));
+}
+
+.leaderboard-row.is-gem-4 .leaderboard-crown {
+  filter: drop-shadow(0 2px 6px rgba(22, 138, 72, 0.45));
+}
+
+.leaderboard-row.is-gem-5 .leaderboard-crown {
+  filter: drop-shadow(0 2px 6px rgba(109, 63, 199, 0.45));
 }
 
 .leaderboard-name {
