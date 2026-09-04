@@ -39,12 +39,6 @@ export function ModeSelect() {
     <div className="menu">
       <p className="menu-kicker">Select difficulty</p>
 
-      <button type="button" className="ranked-play match-mode-btn" onClick={() => navigate('/match')}>
-        <span className="ranked-play-kicker">Multiplayer</span>
-        <span className="ranked-play-title">1v1 Movies</span>
-        <span className="ranked-play-hint">10 clips · same round · live scoreboard</span>
-      </button>
-
       <div className="menu-grid">
         {MODES.map((mode, i) => {
           const count = getPoolSize(mode)

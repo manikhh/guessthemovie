@@ -12,9 +12,7 @@
     "build-clips": "node scripts/build-clips-tmdb.mjs",
     "build-clips:youtube": "node scripts/build-clips.mjs",
     "validate-clips": "tsx scripts/validate-clips.ts",
-    "fetch-candidates": "node scripts/fetch-iran-candidates.mjs",
-    "fetch-duel-candidates": "node scripts/fetch-duel-candidates.mjs",
-    "build-duel-clips": "node scripts/build-duel-clips.mjs"
+    "fetch-candidates": "node scripts/fetch-iran-candidates.mjs"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

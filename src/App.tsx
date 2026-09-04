@@ -7,7 +7,6 @@ import { GamePage } from './pages/GamePage'
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
 import { LeaderboardPage } from './pages/LeaderboardPage'
-import { MatchPage } from './pages/MatchPage'
 import { loadYouTubeApi } from './lib/youtube'
 
 const pageMotion = {
@@ -33,7 +32,6 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
-            <Route path="/match" element={<MatchPage />} />
             <Route path="/play/:difficulty" element={<GamePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
