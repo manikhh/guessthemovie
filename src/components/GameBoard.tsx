@@ -273,9 +273,14 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
     }
   }
 
+  async function exitAfterScore() {
+    await scorePromiseRef.current
+    onExit()
+  }
+
   function queueNext() {
     if (modeComplete || poolProgress.watched >= poolProgress.poolSize) {
-      onExit()
+      void exitAfterScore()
       return
     }
     wantNextRef.current = true
@@ -352,7 +357,15 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
   return (
     <div className={`theater ${finished ? 'is-finished' : ''}`}>
       <header className="theater-chrome">
-        <button type="button" className="btn-back" onClick={onExit} aria-label="Back to modes">
+        <button
+          type="button"
+          className="btn-back"
+          onClick={() => {
+            if (round?.finished) void exitAfterScore()
+            else onExit()
+          }}
+          aria-label="Back to modes"
+        >
           <ChevronLeft size={20} strokeWidth={1.5} absoluteStrokeWidth />
         </button>
         <StatsBar
@@ -435,7 +448,7 @@ export function GameBoard({ difficulty, onExit }: GameBoardProps) {
               movie={movie}
               modeComplete={modeComplete || poolProgress.watched >= poolProgress.poolSize}
               onNext={handleNextMovie}
-              onDone={onExit}
+              onDone={() => void exitAfterScore()}
               onPrefetchNext={prefetchNextMovie}
               loadingNext={loadingNext}
               scorePending={scorePending}

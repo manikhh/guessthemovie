@@ -160,6 +160,28 @@ export async function resolveNextClip(
           },
         },
       )
+      existing.activeMovieId = null
+      existing.activeRoundKey = null
+      existing.actions = []
+      existing.startSec = null
+    } else {
+      // Round already scored but active pointer left behind — clear before next/complete.
+      await col.updateOne(
+        { userId: userObjectId, difficulty },
+        {
+          $set: {
+            activeMovieId: null,
+            activeRoundKey: null,
+            actions: [],
+            startSec: null,
+            updatedAt: now,
+          },
+        },
+      )
+      existing.activeMovieId = null
+      existing.activeRoundKey = null
+      existing.actions = []
+      existing.startSec = null
     }
   }
 

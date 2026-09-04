@@ -67,8 +67,14 @@ export function RoundResult({
             Retry save
           </button>
         ) : modeComplete ? (
-          <button type="button" className="btn btn-primary btn-lg" onClick={onDone} autoFocus>
-            Back to modes
+          <button
+            type="button"
+            className="btn btn-primary btn-lg"
+            onClick={onDone}
+            disabled={scorePending}
+            autoFocus
+          >
+            {scorePending ? 'Saving…' : 'Back to modes'}
           </button>
         ) : (
           <button
@@ -77,7 +83,7 @@ export function RoundResult({
             onClick={onNext}
             onMouseEnter={onPrefetchNext}
             onFocus={onPrefetchNext}
-            disabled={loadingNext}
+            disabled={loadingNext || scorePending}
             autoFocus
           >
             {loadingNext ? 'Loading…' : scorePending ? 'Saving…' : 'Next'}

@@ -1,3 +1,10 @@
 {
+  "redirects": [
+    {
+      "source": "/:path*",
+      "destination": "https://guessit.space/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
 }

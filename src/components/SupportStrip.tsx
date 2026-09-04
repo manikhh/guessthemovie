@@ -57,7 +57,7 @@ export function SupportStrip() {
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
           >
             <p className="support-pitch">
-              Help us build more films, modes, and polish. Small donations keep the factory running.
+              Help us build more. Small donations keep the factory running.
             </p>
             <CopyValue label="Card" value={CARD_NUMBER} />
             <CopyValue label="USDT" value={WALLET_ADDRESS} note="Tether · BEP20" />
